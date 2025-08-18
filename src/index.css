@@ -8,35 +8,54 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 143 25% 7%;
+    --foreground: 48 96% 85%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 143 20% 12%;
+    --card-foreground: 48 96% 85%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 143 20% 8%;
+    --popover-foreground: 48 96% 85%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 48 94% 68%;
+    --primary-foreground: 143 25% 7%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 143 15% 18%;
+    --secondary-foreground: 48 96% 85%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 143 15% 15%;
+    --muted-foreground: 48 20% 65%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 167 83% 35%;
+    --accent-foreground: 48 96% 85%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 48 96% 85%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 143 15% 20%;
+    --input: 143 15% 15%;
+    --ring: 48 94% 68%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
+
+    /* Game-specific colors */
+    --game-board: 143 25% 5%;
+    --property-luxury: 280 100% 25%;
+    --property-standard: 213 93% 40%;
+    --property-budget: 167 83% 35%;
+    --auction-active: 25 95% 53%;
+    --player-highlight: 280 100% 50%;
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(48 94% 78%));
+    --gradient-board: linear-gradient(145deg, hsl(var(--game-board)), hsl(143 20% 8%));
+    --gradient-card: linear-gradient(145deg, hsl(var(--card)), hsl(143 25% 15%));
+    --gradient-auction: linear-gradient(135deg, hsl(var(--auction-active)), hsl(25 95% 65%));
+    
+    /* Shadows */
+    --shadow-luxury: 0 25px 50px -12px hsl(var(--primary) / 0.4);
+    --shadow-card: 0 10px 30px -5px hsl(143 25% 3% / 0.6);
+    --shadow-glow: 0 0 40px hsl(var(--primary) / 0.3);
 
     --sidebar-background: 0 0% 98%;
 
