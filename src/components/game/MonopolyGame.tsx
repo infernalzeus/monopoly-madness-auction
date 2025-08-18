@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import GameBoard from './GameBoard';
+import MonopolyBoardLayout from './MonopolyBoardLayout';
 import AuctionPanel from './AuctionPanel';
 import AdminConsole from './AdminConsole';
 import PlayerPanel from './PlayerPanel';
+import DiceRoller from './DiceRoller';
+import GameOverview from './GameOverview';
+import PropertyCard from './PropertyCard';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { Property } from '@/types/game';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,13 +19,15 @@ const MonopolyGame: React.FC = () => {
   const {
     gameState,
     auctionTimer,
+    isRolling,
     randomizeProperties,
     startAuction,
     placeBid,
     mortgageProperty,
     createTeam,
     joinTeam,
-    updateSettings
+    updateSettings,
+    handleDiceRoll
   } = useGameLogic();
 
   const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayer);
@@ -112,12 +117,21 @@ const MonopolyGame: React.FC = () => {
 
       {/* Main Game Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Game Board */}
+        {/* Left Column - Game Board and Dice */}
         <div className="lg:col-span-2 space-y-6">
-          <GameBoard
+          <MonopolyBoardLayout
             properties={gameState.properties}
+            players={gameState.players}
             onPropertyClick={handlePropertyClick}
             selectedProperty={selectedProperty}
+          />
+          
+          <DiceRoller
+            onRollDice={handleDiceRoll}
+            lastRoll={gameState.lastDiceRoll}
+            currentPlayer={currentPlayer.name}
+            isRolling={isRolling}
+            canRoll={true}
           />
           
           {/* Property Details */}

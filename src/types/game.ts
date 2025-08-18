@@ -1,18 +1,22 @@
 export interface Property {
   id: string;
   name: string;
-  type: 'luxury' | 'standard' | 'budget';
+  type: 'property' | 'railroad' | 'utility' | 'special';
+  colorGroup?: string;
   baseValue: number;
   currentValue: number;
-  rent?: number;
+  rent: number[];
+  mortgageValue: number;
+  houseCost?: number;
+  hotelCost?: number;
+  houses: number;
+  hasHotel: boolean;
   owner?: string;
   isOwned: boolean;
   isMortgaged: boolean;
   isInAuction: boolean;
-  position: {
-    x: number;
-    y: number;
-  };
+  position: number; // 0-39 for board positions
+  description?: string;
 }
 
 export interface Player {
@@ -20,9 +24,13 @@ export interface Player {
   name: string;
   balance: number;
   properties: string[];
+  position: number; // 0-39 board position
   color: string;
   isActive: boolean;
+  isInJail: boolean;
+  jailTurns: number;
   teamId?: string;
+  pieceIcon: string;
 }
 
 export interface Team {
@@ -57,6 +65,24 @@ export interface GameSettings {
   auctionDuration: number; // in seconds
   maxPlayers: number;
   startingBalance: number;
+  passGoReward: number;
+  jailFine: number;
+}
+
+export interface DiceRoll {
+  dice1: number;
+  dice2: number;
+  total: number;
+  isDouble: boolean;
+}
+
+export interface GameEvent {
+  id: string;
+  type: 'move' | 'purchase' | 'rent' | 'auction' | 'jail' | 'passGo' | 'trade';
+  player: string;
+  message: string;
+  timestamp: number;
+  amount?: number;
 }
 
 export interface GameState {
@@ -68,6 +94,9 @@ export interface GameState {
   gamePhase: 'setup' | 'draft' | 'playing' | 'ended';
   turn: number;
   currentPlayer: string;
+  lastDiceRoll: DiceRoll | null;
+  gameEvents: GameEvent[];
+  doubleCount: number;
 }
 
 export interface TradeOffer {
