@@ -17,16 +17,16 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
   onPropertyClick,
   selectedProperty
 }) => {
-  // Color groups for Indian properties
+  // Pastel color groups inspired by Monopoly, softened for a milder look
   const colorGroups: Record<string, string> = {
-    'brown': 'bg-amber-800',
-    'lightBlue': 'bg-sky-300',
-    'pink': 'bg-pink-400',
-    'orange': 'bg-orange-500',
-    'red': 'bg-red-500',
-    'yellow': 'bg-yellow-400',
-    'green': 'bg-green-500',
-    'darkBlue': 'bg-blue-800'
+    'brown': 'bg-amber-300',
+    'lightBlue': 'bg-sky-200',
+    'pink': 'bg-pink-200',
+    'orange': 'bg-orange-200',
+    'red': 'bg-rose-300',
+    'yellow': 'bg-yellow-200',
+    'green': 'bg-emerald-300',
+    'darkBlue': 'bg-blue-300'
   };
 
   // Get properties by board position (0-39)
@@ -43,9 +43,9 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
     const playersHere = getPlayersAtPosition(position);
     
     return (
-      <div className="w-24 h-24 bg-gradient-card border-2 border-border rounded-lg flex flex-col items-center justify-center relative p-2">
+      <div className="w-24 h-24 bg-white border border-slate-200 rounded-lg flex flex-col items-center justify-center relative p-2 shadow-sm">
         {icon}
-        <span className="text-xs font-bold text-center text-foreground mt-1">{label}</span>
+        <span className="text-xs font-semibold text-center text-slate-700 mt-1">{label}</span>
         {playersHere.length > 0 && (
           <div className="absolute -top-1 -right-1 flex gap-1">
             {playersHere.slice(0, 4).map((player, idx) => (
@@ -76,9 +76,9 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
       <Card
         className={`
           ${isHorizontal ? 'w-16 h-24' : 'w-24 h-16'} 
-          cursor-pointer transition-all duration-200 hover:scale-105 relative
-          ${selectedProperty?.id === property.id ? 'ring-2 ring-primary shadow-glow' : ''}
-          bg-gradient-card border border-border
+          cursor-pointer transition-all duration-200 hover:shadow-md relative
+          ${selectedProperty?.id === property.id ? 'ring-2 ring-sky-300' : ''}
+          bg-white border border-slate-200
         `}
         onClick={() => onPropertyClick(property)}
       >
@@ -87,10 +87,10 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
         
         <div className={`p-1 pt-3 ${isHorizontal ? 'pl-1' : 'pl-3'} flex flex-col justify-between h-full`}>
           <div>
-            <h4 className="text-xs font-bold text-foreground leading-tight line-clamp-2">
+            <h4 className="text-xs font-semibold text-slate-800 leading-tight line-clamp-2">
               {property.name}
             </h4>
-            <div className="text-xs text-primary font-semibold">
+            <div className="text-xs text-sky-700 font-semibold">
               ₹{(property.baseValue / 1000)}K
             </div>
           </div>
@@ -111,17 +111,17 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
           {/* Property status */}
           <div className="flex flex-col gap-1 mt-1">
             {property.isOwned && (
-              <Badge variant="secondary" className="text-xs px-1 py-0">
+              <Badge variant="secondary" className="text-xs px-1 py-0 bg-slate-100 text-slate-700">
                 {property.owner}
               </Badge>
             )}
             {property.isMortgaged && (
-              <Badge variant="destructive" className="text-xs px-1 py-0">
+              <Badge variant="destructive" className="text-xs px-1 py-0 bg-rose-200 text-rose-800">
                 Mortgaged
               </Badge>
             )}
             {property.isInAuction && (
-              <Badge className="text-xs px-1 py-0 bg-auction-active animate-pulse-glow">
+              <Badge className="text-xs px-1 py-0 bg-amber-200 text-amber-900">
                 Auction
               </Badge>
             )}
@@ -148,20 +148,20 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
   };
 
   return (
-    <div className="bg-gradient-board p-6 rounded-xl shadow-luxury">
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
       <div className="relative w-full max-w-4xl mx-auto">
         {/* Board container */}
         <div className="grid grid-cols-11 gap-1">
           {/* Top row */}
           <div className="col-span-11 grid grid-cols-11 gap-1">
             {/* Free Parking */}
-            {renderCornerSpace(20, 'Free Parking', <Landmark className="w-6 h-6 text-primary" />)}
+            {renderCornerSpace(20, 'Free Parking', <Landmark className="w-6 h-6 text-sky-600" />)}
             
             {/* Top properties (21-30) */}
             {Array.from({ length: 9 }, (_, i) => renderProperty(21 + i, true))}
             
             {/* Go to Jail */}
-            {renderCornerSpace(30, 'Go to Jail', <Building className="w-6 h-6 text-destructive" />)}
+            {renderCornerSpace(30, 'Go to Jail', <Building className="w-6 h-6 text-rose-500" />)}
           </div>
 
           {/* Middle rows */}
@@ -172,11 +172,11 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
               
               {/* Center space (game info) */}
               {rowIndex === 4 && (
-                <div className="col-span-9 row-span-1 bg-gradient-card rounded-lg border-2 border-primary p-4 flex items-center justify-center">
+                <div className="col-span-9 row-span-1 bg-white rounded-lg border border-slate-200 p-4 flex items-center justify-center shadow-sm">
                   <div className="text-center">
-                    <h2 className="text-2xl font-bold text-primary mb-2">MONOPOLY</h2>
-                    <p className="text-sm text-muted-foreground">Business India Edition</p>
-                    <div className="mt-2 text-xs text-foreground">
+                    <h2 className="text-2xl font-bold text-slate-800 mb-2">MONOPOLY</h2>
+                    <p className="text-sm text-slate-500">Business India Edition</p>
+                    <div className="mt-2 text-xs text-slate-700">
                       Current Turn: {players.find(p => p.id === players[0]?.id)?.name || 'Loading...'}
                     </div>
                   </div>
@@ -194,13 +194,13 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
           {/* Bottom row */}
           <div className="col-span-11 grid grid-cols-11 gap-1">
             {/* Jail */}
-            {renderCornerSpace(10, 'Jail / Just Visiting', <Building className="w-6 h-6 text-muted-foreground" />)}
+            {renderCornerSpace(10, 'Jail / Just Visiting', <Building className="w-6 h-6 text-slate-500" />)}
             
             {/* Bottom properties (9-1) */}
             {Array.from({ length: 9 }, (_, i) => renderProperty(9 - i, true))}
             
             {/* GO */}
-            {renderCornerSpace(0, 'GO', <div className="text-lg">→</div>)}
+            {renderCornerSpace(0, 'GO', <div className="text-lg text-emerald-600">→</div>)}
           </div>
         </div>
       </div>

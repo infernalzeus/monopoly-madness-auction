@@ -77,15 +77,15 @@ const MonopolyGame: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4">
+    <div className="min-h-screen bg-white p-4">
       {/* Game Header */}
-      <Card className="mb-6 bg-gradient-card border-primary shadow-glow">
+      <Card className="mb-6 bg-white border border-slate-200 shadow-sm">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between text-foreground">
+          <CardTitle className="flex items-center justify-between text-slate-800">
             <div className="flex items-center gap-3">
-              <Crown className="w-6 h-6 text-primary" />
+              <Crown className="w-6 h-6 text-amber-500" />
               <span className="text-2xl font-bold">Monopoly Auction</span>
-              <Badge className="bg-primary text-primary-foreground">
+              <Badge className="bg-sky-200 text-slate-800">
                 Phase: {gameState.gamePhase}
               </Badge>
             </div>
@@ -136,29 +136,29 @@ const MonopolyGame: React.FC = () => {
           
           {/* Property Details */}
           {selectedProperty && (
-            <Card className="bg-gradient-card border-border">
+            <Card className="bg-white border border-slate-200 shadow-sm">
               <CardHeader>
-                <CardTitle className="text-foreground">Property Details</CardTitle>
+                <CardTitle className="text-slate-800">Property Details</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <h3 className="font-bold text-primary mb-2">{selectedProperty.name}</h3>
+                    <h3 className="font-bold text-slate-800 mb-2">{selectedProperty.name}</h3>
                     <div className="space-y-1 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Type:</span>
-                        <span className="capitalize text-foreground">{selectedProperty.type}</span>
+                        <span className="text-slate-500">Type:</span>
+                        <span className="capitalize text-slate-800">{selectedProperty.type}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Current Value:</span>
-                        <span className="font-semibold text-primary">
+                        <span className="text-slate-500">Current Value:</span>
+                        <span className="font-semibold text-sky-700">
                           ₹{selectedProperty.currentValue.toLocaleString()}
                         </span>
                       </div>
                       {selectedProperty.rent && (
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Rent:</span>
-                          <span className="text-foreground">₹{selectedProperty.rent.toLocaleString()}</span>
+                          <span className="text-slate-500">Rent:</span>
+                          <span className="text-slate-800">₹{selectedProperty.rent.toLocaleString()}</span>
                         </div>
                       )}
                     </div>
@@ -167,17 +167,17 @@ const MonopolyGame: React.FC = () => {
                   <div>
                     {selectedProperty.isOwned && (
                       <div className="space-y-2">
-                        <Badge variant="secondary">
+                        <Badge variant="secondary" className="bg-slate-100 text-slate-800">
                           Owned by {selectedProperty.owner}
                         </Badge>
                         {selectedProperty.isMortgaged && (
-                          <Badge variant="destructive">Mortgaged</Badge>
+                          <Badge variant="destructive" className="bg-rose-200 text-rose-800">Mortgaged</Badge>
                         )}
                       </div>
                     )}
                     
                     {selectedProperty.isInAuction && (
-                      <Badge className="bg-auction-active animate-pulse-glow">
+                      <Badge className="bg-amber-200 text-amber-900">
                         Currently in Auction
                       </Badge>
                     )}
@@ -190,6 +190,37 @@ const MonopolyGame: React.FC = () => {
 
         {/* Right Column - Control Panels */}
         <div className="space-y-6">
+          {/* Legend / Pieces */}
+          <Card className="bg-white border border-slate-200 shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-slate-800 text-base">Pieces & Money</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#ef4444' }} />
+                  <span className="text-slate-700">Player Token</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-3 bg-emerald-300 border border-emerald-400" />
+                  <span className="text-slate-700">House</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-3 bg-rose-300 border border-rose-400" />
+                  <span className="text-slate-700">Hotel</span>
+                </div>
+                <div className="flex items-center gap-2 col-span-3">
+                  <div className="flex -space-x-1">
+                    <div className="w-6 h-3 bg-yellow-200 border border-yellow-300" />
+                    <div className="w-6 h-3 bg-sky-200 border border-sky-300" />
+                    <div className="w-6 h-3 bg-pink-200 border border-pink-300" />
+                  </div>
+                  <span className="text-slate-700">Token Money</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Auction Panel */}
           <AuctionPanel
             currentAuction={currentAuctionData}
