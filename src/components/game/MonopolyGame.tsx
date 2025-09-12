@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import MonopolyBoardLayout from './MonopolyBoardLayout';
 import AuctionPanel from './AuctionPanel';
-import AdminConsole from './AdminConsole';
 import PlayerPanel from './PlayerPanel';
 import DiceRoller from './DiceRoller';
 import GameOverview from './GameOverview';
@@ -11,10 +10,21 @@ import { Property } from '@/types/game';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Crown, Users, TrendingUp } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
 const MonopolyGame: React.FC = () => {
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
-  const [isAdmin, setIsAdmin] = useState(true); // In real app, this would be based on user role
+  const [showSetup, setShowSetup] = useState(true);
+  // Local setup state mirrors a subset of settings for initial configuration
+  const [setupAuctionsEnabled, setSetupAuctionsEnabled] = useState(true);
+  const [setupTeamsEnabled, setSetupTeamsEnabled] = useState(true);
+  const [setupMortgageEnabled, setSetupMortgageEnabled] = useState(true);
+  const [setupTradingEnabled, setSetupTradingEnabled] = useState(true);
+  const [setupAuctionDuration, setSetupAuctionDuration] = useState(120);
   
   const {
     gameState,
@@ -23,6 +33,9 @@ const MonopolyGame: React.FC = () => {
     randomizeProperties,
     startAuction,
     placeBid,
+    purchaseProperty,
+    skipPurchase,
+    makeOffer,
     mortgageProperty,
     createTeam,
     joinTeam,
@@ -42,6 +55,15 @@ const MonopolyGame: React.FC = () => {
     timeRemaining: auctionTimer || 0,
     bids: gameState.currentAuction.bids
   } : null;
+
+  // Pending purchase UI data
+  const pendingPurchaseData = gameState.pendingPurchase ? {
+    property: gameState.properties.find(p => p.id === gameState.pendingPurchase!.propertyId)!
+  } : null;
+
+  // Determine if current tile has an owned property (not by current player) to enable offers
+  const propertyOnTile = gameState.properties.find(p => p.position === currentPlayer.position);
+  const ownedPropertyOnTile = propertyOnTile && propertyOnTile.isOwned && propertyOnTile.owner !== currentPlayer.name ? propertyOnTile : null;
 
   const handlePropertyClick = (property: Property) => {
     setSelectedProperty(property);
@@ -64,6 +86,17 @@ const MonopolyGame: React.FC = () => {
   const handleEndGame = () => {
     // Implementation for ending the game
     console.log('Game ended');
+  };
+
+  const handleApplySetup = () => {
+    updateSettings({
+      auctionsEnabled: setupAuctionsEnabled,
+      teamsEnabled: setupTeamsEnabled,
+      mortgageEnabled: setupMortgageEnabled,
+      tradingEnabled: setupTradingEnabled,
+      auctionDuration: setupAuctionDuration,
+    });
+    setShowSetup(false);
   };
 
   if (!currentPlayer) {
@@ -224,7 +257,21 @@ const MonopolyGame: React.FC = () => {
           {/* Auction Panel */}
           <AuctionPanel
             currentAuction={currentAuctionData}
+            pendingPurchase={pendingPurchaseData}
+            ownedPropertyOnTile={ownedPropertyOnTile}
             onPlaceBid={placeBid}
+            onBuyNow={() => {
+              if (gameState.pendingPurchase) {
+                purchaseProperty(gameState.pendingPurchase.propertyId);
+              }
+            }}
+            onSkipPurchase={() => skipPurchase()}
+            onStartAuction={(pid) => startAuction(pid)}
+            onMakeOffer={(amount) => {
+              if (ownedPropertyOnTile) {
+                makeOffer(ownedPropertyOnTile.id, ownedPropertyOnTile.owner as string, amount);
+              }
+            }}
             players={gameState.players.map(p => p.name)}
             currentPlayer={currentPlayer.name}
           />
@@ -243,16 +290,46 @@ const MonopolyGame: React.FC = () => {
             canTeam={gameState.settings.teamsEnabled}
           />
 
-          {/* Admin Console */}
-          <AdminConsole
-            gameSettings={gameState.settings}
-            onSettingsChange={updateSettings}
-            onRandomizeProperties={randomizeProperties}
-            onStartAuction={handleStartAuction}
-            onEndGame={handleEndGame}
-            properties={gameState.properties}
-            isAdmin={isAdmin}
-          />
+          {/* Startup Setup Dialog */}
+          <Dialog open={showSetup}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Game Setup</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">Enable Auctions</Label>
+                  <Switch checked={setupAuctionsEnabled} onCheckedChange={setSetupAuctionsEnabled} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">Allow Teams</Label>
+                  <Switch checked={setupTeamsEnabled} onCheckedChange={setSetupTeamsEnabled} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">Mortgage System</Label>
+                  <Switch checked={setupMortgageEnabled} onCheckedChange={setSetupMortgageEnabled} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">Property Trading</Label>
+                  <Switch checked={setupTradingEnabled} onCheckedChange={setSetupTradingEnabled} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm" htmlFor="auctionDuration">Auction Duration (seconds)</Label>
+                  <Input
+                    id="auctionDuration"
+                    type="number"
+                    min={15}
+                    step={15}
+                    value={setupAuctionDuration}
+                    onChange={(e) => setSetupAuctionDuration(parseInt(e.target.value || '0', 10))}
+                  />
+                </div>
+              </div>
+              <DialogFooter className="pt-4">
+                <Button onClick={handleApplySetup} className="w-full">Start Game</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </div>

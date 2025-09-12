@@ -97,6 +97,7 @@ export interface GameState {
   lastDiceRoll: DiceRoll | null;
   gameEvents: GameEvent[];
   doubleCount: number;
+  pendingPurchase?: { propertyId: string; playerId: string } | null;
 }
 
 export interface TradeOffer {

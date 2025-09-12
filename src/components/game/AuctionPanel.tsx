@@ -14,19 +14,33 @@ interface AuctionPanelProps {
     timeRemaining: number;
     bids: AuctionBid[];
   } | null;
+  pendingPurchase: { property: Property } | null;
+  ownedPropertyOnTile: Property | null;
   onPlaceBid: (amount: number) => void;
+  onBuyNow: () => void;
+  onSkipPurchase: () => void;
+  onStartAuction: (propertyId: string) => void;
+  onMakeOffer: (amount: number) => void;
   players: string[];
   currentPlayer: string;
 }
 
 const AuctionPanel: React.FC<AuctionPanelProps> = ({
   currentAuction,
+  pendingPurchase,
+  ownedPropertyOnTile,
   onPlaceBid,
+  onBuyNow,
+  onSkipPurchase,
+  onStartAuction,
+  onMakeOffer,
   players,
   currentPlayer
 }) => {
   const [bidAmount, setBidAmount] = useState<string>('');
+  const [offerAmount, setOfferAmount] = useState<string>('');
 
+  // If no live auction, show purchase prompt or offer UI
   if (!currentAuction) {
     return (
       <Card className="bg-gradient-card border-border">
@@ -36,10 +50,71 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
             Auction House
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground text-center py-8">
-            No active auction
-          </p>
+        <CardContent className="space-y-4">
+          {pendingPurchase ? (
+            <div className="space-y-3">
+              <h3 className="font-semibold text-foreground">Buy Property</h3>
+              <div className="bg-background/50 rounded p-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Property</span>
+                  <span className="font-medium">{pendingPurchase.property.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Price</span>
+                  <span className="font-semibold">₹{pendingPurchase.property.currentValue.toLocaleString()}</span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={onBuyNow} className="flex-1">Buy Now</Button>
+                <Button variant="outline" onClick={() => onStartAuction(pendingPurchase.property.id)} className="flex-1">Start Auction</Button>
+                <Button variant="ghost" onClick={onSkipPurchase} className="flex-1">Skip</Button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center py-2">No active auction</p>
+          )}
+
+          {ownedPropertyOnTile && (
+            <div className="space-y-3 pt-2 border-t">
+              <h3 className="font-semibold text-foreground">Make an Offer</h3>
+              <div className="bg-background/50 rounded p-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Property</span>
+                  <span className="font-medium">{ownedPropertyOnTile.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Owner</span>
+                  <span className="font-medium">{ownedPropertyOnTile.owner}</span>
+                </div>
+                {(ownedPropertyOnTile.houses > 0 || ownedPropertyOnTile.hasHotel) && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Improvements</span>
+                    <span className="font-medium">{ownedPropertyOnTile.hasHotel ? 'Hotel' : `${ownedPropertyOnTile.houses} House(s)`}</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  placeholder="Offer amount"
+                  value={offerAmount}
+                  onChange={(e) => setOfferAmount(e.target.value)}
+                />
+                <Button
+                  onClick={() => {
+                    const amt = parseInt(offerAmount);
+                    if (!isNaN(amt) && amt > 0) {
+                      onMakeOffer(amt);
+                      setOfferAmount('');
+                    }
+                  }}
+                  disabled={!offerAmount || parseInt(offerAmount) <= 0}
+                >
+                  Send Offer
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     );

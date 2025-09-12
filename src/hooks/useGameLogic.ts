@@ -154,7 +154,8 @@ export const useGameLogic = () => {
     currentPlayer: 'player-1',
     lastDiceRoll: null,
     gameEvents: [],
-    doubleCount: 0
+    doubleCount: 0,
+    pendingPurchase: null
   });
 
   const [auctionTimer, setAuctionTimer] = useState<number | null>(null);
@@ -187,9 +188,54 @@ export const useGameLogic = () => {
     return { dice1, dice2, total, isDouble };
   }, []);
 
+  const advanceTurn = useCallback(() => {
+    setGameState(prev => {
+      const playerCount = prev.players.length;
+      const currentIndex = prev.players.findIndex(p => p.id === prev.currentPlayer);
+      let nextIndex = (currentIndex + 1) % playerCount;
+      // Skip inactive players
+      for (let i = 0; i < playerCount; i++) {
+        const candidate = prev.players[nextIndex];
+        if (candidate.isActive) break;
+        nextIndex = (nextIndex + 1) % playerCount;
+      }
+      return {
+        ...prev,
+        turn: prev.turn + 1,
+        currentPlayer: prev.players[nextIndex].id
+      };
+    });
+  }, []);
+
+  const startAuction = useCallback((propertyId: string) => {
+    const property = gameState.properties.find(p => p.id === propertyId);
+    if (!property || property.isOwned || property.isInAuction) return;
+
+    const auction: Auction = {
+      propertyId,
+      startTime: Date.now(),
+      duration: gameState.settings.auctionDuration,
+      currentBid: Math.round(property.currentValue * 0.7), // Start at 70% of value
+      highestBidder: null,
+      bids: [],
+      isActive: true
+    };
+
+    setGameState(prev => ({
+      ...prev,
+      currentAuction: auction,
+      properties: prev.properties.map(p =>
+        p.id === propertyId ? { ...p, isInAuction: true } : p
+      )
+    }));
+
+    setAuctionTimer(gameState.settings.auctionDuration);
+  }, [gameState.properties, gameState.settings.auctionDuration]);
+
   // Handle dice roll and player movement
   const handleDiceRoll = useCallback(() => {
     if (isRolling) return;
+    // Allow rolling even if an auction exists or a purchase was pending; we'll auto-resolve
     
     setIsRolling(true);
     
@@ -217,13 +263,20 @@ export const useGameLogic = () => {
           return player;
         });
 
-        const newDoubleCount = diceResult.isDouble ? prev.doubleCount + 1 : 0;
+        // Double-roll rule disabled; always reset double count
+        const newDoubleCount = 0;
+        const movingPlayer = newPlayers.find(p => p.id === prev.currentPlayer)!;
+        const landedProperty = prev.properties.find(p => p.position === movingPlayer.position);
+        const isBuyable = landedProperty && (landedProperty.type === 'property' || landedProperty.type === 'railroad' || landedProperty.type === 'utility');
+        const shouldOfferPurchase = Boolean(isBuyable && landedProperty && !landedProperty.isOwned);
         
         return {
           ...prev,
           players: newPlayers,
           lastDiceRoll: diceResult,
-          doubleCount: newDoubleCount
+          doubleCount: newDoubleCount,
+          // If landed on an unowned, buyable property, prompt current player to purchase
+          pendingPurchase: shouldOfferPurchase ? { propertyId: landedProperty!.id, playerId: prev.currentPlayer } : null
         };
       });
 
@@ -240,11 +293,19 @@ export const useGameLogic = () => {
           `rolled ${diceResult.total} and moved to ${property?.name || `position ${newPosition}`}${passedGo ? ' (passed GO!)' : ''}`,
           passedGo ? gameState.settings.passGoReward : undefined
         );
+
+        // If landed on an unowned buyable property, a purchase prompt is shown via pendingPurchase
+        // Otherwise, advance turn immediately
+        if (!(property && (property.type === 'property' || property.type === 'railroad' || property.type === 'utility') && !property.isOwned)) {
+          advanceTurn();
+        }
       }
 
       setIsRolling(false);
     }, 1000);
-  }, [gameState.players, gameState.currentPlayer, gameState.properties, gameState.settings, rollDice, addGameEvent, isRolling]);
+  }, [gameState.players, gameState.currentPlayer, gameState.properties, gameState.settings, rollDice, addGameEvent, isRolling, startAuction, advanceTurn]);
+
+  
 
   // Property randomization
   const randomizeProperties = useCallback(() => {
@@ -293,30 +354,7 @@ export const useGameLogic = () => {
   }, [gameState.currentAuction, auctionTimer]);
 
 
-  const startAuction = useCallback((propertyId: string) => {
-    const property = gameState.properties.find(p => p.id === propertyId);
-    if (!property || property.isOwned || property.isInAuction) return;
-
-    const auction: Auction = {
-      propertyId,
-      startTime: Date.now(),
-      duration: gameState.settings.auctionDuration,
-      currentBid: Math.round(property.currentValue * 0.7), // Start at 70% of value
-      highestBidder: null,
-      bids: [],
-      isActive: true
-    };
-
-    setGameState(prev => ({
-      ...prev,
-      currentAuction: auction,
-      properties: prev.properties.map(p =>
-        p.id === propertyId ? { ...p, isInAuction: true } : p
-      )
-    }));
-
-    setAuctionTimer(gameState.settings.auctionDuration);
-  }, [gameState.properties, gameState.settings.auctionDuration]);
+  
 
   const placeBid = useCallback((amount: number) => {
     if (!gameState.currentAuction) return;
@@ -389,7 +427,74 @@ export const useGameLogic = () => {
     });
 
     setAuctionTimer(null);
+    // Always advance turn after auction ends (double-roll rule disabled)
+    advanceTurn();
   }, [gameState.currentAuction]);
+
+  const purchaseProperty = useCallback((propertyId: string) => {
+    const pending = gameState.pendingPurchase;
+    if (!pending || pending.propertyId !== propertyId) return;
+
+    const property = gameState.properties.find(p => p.id === propertyId);
+    const player = gameState.players.find(p => p.id === pending.playerId);
+    if (!property || !player) return;
+    if (property.isOwned) return;
+    if (player.balance < property.currentValue) return;
+
+    setGameState(prev => ({
+      ...prev,
+      properties: prev.properties.map(p =>
+        p.id === propertyId ? { ...p, isOwned: true, owner: player.name, isInAuction: false } : p
+      ),
+      players: prev.players.map(pl =>
+        pl.id === pending.playerId
+          ? { ...pl, balance: pl.balance - property.currentValue, properties: [...pl.properties, propertyId] }
+          : pl
+      ),
+      pendingPurchase: null
+    }));
+
+    addGameEvent('purchase', player.name, `bought ${property.name}`, -property.currentValue);
+
+    // Advance to next player after purchase
+    advanceTurn();
+  }, [gameState.pendingPurchase, gameState.properties, gameState.players, addGameEvent, advanceTurn]);
+
+  const skipPurchase = useCallback(() => {
+    const pending = gameState.pendingPurchase;
+    if (!pending) return;
+    const property = gameState.properties.find(p => p.id === pending.propertyId);
+    const player = gameState.players.find(p => p.id === pending.playerId);
+
+    setGameState(prev => ({
+      ...prev,
+      pendingPurchase: null
+    }));
+
+    if (player && property) {
+      addGameEvent('purchase', player.name, `skipped buying ${property.name}`);
+      if (gameState.settings.auctionsEnabled) {
+        startAuction(pending.propertyId);
+      }
+    }
+
+    // Advance to next player after decision
+    advanceTurn();
+  }, [gameState.pendingPurchase, gameState.properties, gameState.players, gameState.settings.auctionsEnabled, addGameEvent, startAuction, advanceTurn]);
+
+  // Make a simple purchase offer to another player for a specific property
+  const makeOffer = useCallback((propertyId: string, toPlayerName: string, amount: number) => {
+    const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayer);
+    const property = gameState.properties.find(p => p.id === propertyId);
+    if (!currentPlayer || !property) return;
+
+    addGameEvent(
+      'trade',
+      currentPlayer.name,
+      `offered ₹${amount.toLocaleString()} to ${toPlayerName} for ${property.name}`,
+      amount
+    );
+  }, [gameState.players, gameState.currentPlayer, gameState.properties, addGameEvent]);
 
   const mortgageProperty = useCallback((propertyId: string) => {
     const property = gameState.properties.find(p => p.id === propertyId);
@@ -461,6 +566,9 @@ export const useGameLogic = () => {
     startAuction,
     placeBid,
     endAuction,
+    purchaseProperty,
+    skipPurchase,
+    makeOffer,
     mortgageProperty,
     createTeam,
     joinTeam,
