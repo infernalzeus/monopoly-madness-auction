@@ -17,9 +17,10 @@ const GameBoard: React.FC<GameBoardProps> = ({
   // Softer pastel strip colors per property type
   const getPropertyTypeBgClass = (type: string) => {
     switch (type) {
-      case 'luxury': return 'bg-rose-200';
-      case 'standard': return 'bg-sky-200';
-      case 'budget': return 'bg-emerald-200';
+      case 'property': return 'bg-emerald-200';
+      case 'railroad': return 'bg-yellow-200';
+      case 'utility': return 'bg-sky-200';
+      case 'special': return 'bg-rose-200';
       default: return 'bg-slate-200';
     }
   };

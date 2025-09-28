@@ -31,6 +31,7 @@ export interface Player {
   jailTurns: number;
   teamId?: string;
   pieceIcon: string;
+  isBot?: boolean;
 }
 
 export interface Team {
@@ -57,7 +58,21 @@ export interface Auction {
   isActive: boolean;
 }
 
+export type GameMode = 'classic' | 'auction' | 'draft' | 'custom' | 'console';
+
+export interface Lobby {
+  id: string;
+  code: string; // 6-digit code
+  ownerId: string;
+  players: string[]; // Player IDs
+  maxPlayers: number;
+  gameSettings: GameSettings;
+  isActive: boolean;
+  createdAt: number;
+}
+
 export interface GameSettings {
+  gameMode: GameMode;
   auctionsEnabled: boolean;
   teamsEnabled: boolean;
   mortgageEnabled: boolean;
@@ -67,6 +82,9 @@ export interface GameSettings {
   startingBalance: number;
   passGoReward: number;
   jailFine: number;
+  allowPropertyEditing: boolean;
+  preAuctionProperties: string[]; // Property IDs to auction at start
+  customPropertyLists: Record<string, string[]>; // Named property lists for editing
 }
 
 export interface DiceRoll {
@@ -78,7 +96,7 @@ export interface DiceRoll {
 
 export interface GameEvent {
   id: string;
-  type: 'move' | 'purchase' | 'rent' | 'auction' | 'jail' | 'passGo' | 'trade';
+  type: 'move' | 'purchase' | 'rent' | 'auction' | 'jail' | 'passGo' | 'trade' | 'build' | 'bankrupt' | 'card' | 'mortgage';
   player: string;
   message: string;
   timestamp: number;
@@ -91,13 +109,18 @@ export interface GameState {
   teams: Team[];
   currentAuction: Auction | null;
   settings: GameSettings;
-  gamePhase: 'setup' | 'draft' | 'playing' | 'ended';
+  gamePhase: 'setup' | 'draft' | 'auction' | 'playing' | 'ended';
   turn: number;
   currentPlayer: string;
   lastDiceRoll: DiceRoll | null;
   gameEvents: GameEvent[];
   doubleCount: number;
   pendingPurchase?: { propertyId: string; playerId: string } | null;
+  winnerId?: string | null;
+  turnState: 'waiting_for_roll' | 'waiting_for_action' | 'processing' | 'completed';
+  preAuctionPhase: boolean;
+  consoleOpen: boolean;
+  tradeOffers: TradeOffer[];
 }
 
 export interface TradeOffer {

@@ -19,6 +19,7 @@ interface PlayerPanelProps {
   teams: Team[];
   ownedProperties: Property[];
   onMortgage: (propertyId: string) => void;
+  onUnmortgage?: (propertyId: string) => void;
   onSell: (propertyId: string, amount: number) => void;
   onTrade: (toPlayer: string, offeredProps: string[], requestedProps: string[]) => void;
   onJoinTeam: (teamId: string) => void;
@@ -32,6 +33,7 @@ const PlayerPanel: React.FC<PlayerPanelProps> = ({
   teams,
   ownedProperties,
   onMortgage,
+  onUnmortgage,
   onSell,
   onTrade,
   onJoinTeam,
@@ -135,6 +137,21 @@ const PlayerPanel: React.FC<PlayerPanelProps> = ({
                       className="text-xs px-2"
                     >
                       Mortgage
+                    </Button>
+                  </div>
+                )}
+                {selectedProperty === property.id && property.isMortgaged && (
+                  <div className="flex gap-1 ml-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onUnmortgage && onUnmortgage(property.id);
+                      }}
+                      className="text-xs px-2"
+                    >
+                      Unmortgage
                     </Button>
                   </div>
                 )}

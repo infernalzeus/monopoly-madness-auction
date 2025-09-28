@@ -5,25 +5,35 @@ import PlayerPanel from './PlayerPanel';
 import DiceRoller from './DiceRoller';
 import GameOverview from './GameOverview';
 import PropertyCard from './PropertyCard';
+import GameConsole from './GameConsole';
+import PreAuctionPanel from './PreAuctionPanel';
+import LobbySystem from './LobbySystem';
+import TransactionNotification from './TransactionNotification';
+import TradingSystem from './TradingSystem';
 import { useGameLogic } from '@/hooks/useGameLogic';
-import { Property } from '@/types/game';
+import { Property, GameMode, GameSettings } from '@/types/game';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Crown, Users, TrendingUp } from 'lucide-react';
+import { Crown, Users, TrendingUp, Settings, Gavel } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const MonopolyGame: React.FC = () => {
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
-  const [showSetup, setShowSetup] = useState(true);
+  const [showLobby, setShowLobby] = useState(true);
+  const [isLobbyOwner, setIsLobbyOwner] = useState(false);
+  const [lobbyCode, setLobbyCode] = useState('');
+  const [showPreAuctionDialog, setShowPreAuctionDialog] = useState(false);
+  
   // Local setup state mirrors a subset of settings for initial configuration
-  const [setupAuctionsEnabled, setSetupAuctionsEnabled] = useState(true);
+  const [setupAuctionsEnabled, setSetupAuctionsEnabled] = useState(false);
   const [setupTeamsEnabled, setSetupTeamsEnabled] = useState(true);
   const [setupMortgageEnabled, setSetupMortgageEnabled] = useState(true);
-  const [setupTradingEnabled, setSetupTradingEnabled] = useState(true);
+  const [setupTradingEnabled, setSetupTradingEnabled] = useState(false);
   const [setupAuctionDuration, setSetupAuctionDuration] = useState(120);
   
   const {
@@ -37,10 +47,31 @@ const MonopolyGame: React.FC = () => {
     skipPurchase,
     makeOffer,
     mortgageProperty,
+    unmortgageProperty,
     createTeam,
     joinTeam,
     updateSettings,
-    handleDiceRoll
+    handleDiceRoll,
+    buildHouse,
+    sellHouse,
+    buildHotel,
+    sellHotel,
+    endTurn,
+    saveGame,
+    loadGame,
+    resetGame,
+    setGameMode,
+    startPreAuction,
+    endPreAuction,
+    toggleConsole,
+    updatePropertyList,
+    addPropertyToList,
+    removePropertyFromList,
+    setPreAuctionProperties,
+    updateProperty,
+    createTradeOffer,
+    acceptTradeOffer,
+    rejectTradeOffer
   } = useGameLogic();
 
   const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayer);
@@ -88,16 +119,78 @@ const MonopolyGame: React.FC = () => {
     console.log('Game ended');
   };
 
-  const handleApplySetup = () => {
+  const handleCreateLobby = (settings: GameSettings) => {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    setLobbyCode(code);
+    setIsLobbyOwner(true);
+    setShowLobby(false);
+    
+    // Update game settings and start the game
     updateSettings({
-      auctionsEnabled: setupAuctionsEnabled,
-      teamsEnabled: setupTeamsEnabled,
-      mortgageEnabled: setupMortgageEnabled,
-      tradingEnabled: setupTradingEnabled,
-      auctionDuration: setupAuctionDuration,
+      ...settings,
+      gameMode: settings.auctionsEnabled ? 'auction' : 'classic'
     });
-    setShowSetup(false);
+    
+    // Set game phase to playing
+    setGameMode(settings.auctionsEnabled ? 'auction' : 'classic');
+    
+    // If auctions are enabled, show pre-auction dialog
+    if (settings.auctionsEnabled) {
+      setShowPreAuctionDialog(true);
+    } else {
+      // For classic mode, start the game immediately
+      setTimeout(() => {
+        setGameMode('classic');
+      }, 100);
+    }
   };
+
+  const handleJoinLobby = (code: string) => {
+    setLobbyCode(code);
+    setIsLobbyOwner(false);
+    setShowLobby(false);
+    // In a real implementation, this would connect to the lobby
+  };
+
+  const handleStartGame = () => {
+    setShowPreAuctionDialog(false);
+    if (gameState.settings.auctionsEnabled) {
+      startPreAuction();
+    } else {
+      // For classic mode, just set the game phase to playing
+      setGameMode('classic');
+    }
+  };
+
+  const handleDismissEvent = (eventId: string) => {
+    // In a real implementation, this would remove the event from the game state
+    console.log('Dismissing event:', eventId);
+  };
+
+  const handleStartPreAuction = () => {
+    startPreAuction();
+  };
+
+  const handleEndPreAuction = () => {
+    endPreAuction();
+  };
+
+  const handleStartNextAuction = () => {
+    const remainingProperties = gameState.properties.filter(p => 
+      gameState.settings.preAuctionProperties.includes(p.id) && 
+      !p.isOwned && 
+      !p.isInAuction
+    );
+    
+    if (remainingProperties.length > 0) {
+      startAuction(remainingProperties[0].id);
+    }
+  };
+
+  // Show lobby system if not in game yet
+  if (showLobby) {
+    return <LobbySystem onCreateLobby={handleCreateLobby} onJoinLobby={handleJoinLobby} />;
+  }
 
   if (!currentPlayer) {
     return (
@@ -111,6 +204,12 @@ const MonopolyGame: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white p-4">
+      {/* Transaction Notifications */}
+      <TransactionNotification 
+        events={gameState.gameEvents}
+        onDismiss={handleDismissEvent}
+      />
+      
       {/* Game Header */}
       <Card className="mb-6 bg-white border border-slate-200 shadow-sm">
         <CardHeader>
@@ -157,6 +256,7 @@ const MonopolyGame: React.FC = () => {
             players={gameState.players}
             onPropertyClick={handlePropertyClick}
             selectedProperty={selectedProperty}
+            lastDiceRoll={gameState.lastDiceRoll}
           />
           
           <DiceRoller
@@ -164,8 +264,17 @@ const MonopolyGame: React.FC = () => {
             lastRoll={gameState.lastDiceRoll}
             currentPlayer={currentPlayer.name}
             isRolling={isRolling}
-            canRoll={true}
+            canRoll={gameState.turnState === 'waiting_for_roll'}
           />
+
+          {/* Game Mode Indicator */}
+          <div className="flex justify-center">
+            <Badge 
+              className="text-lg px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold"
+            >
+              Mode: {gameState.settings.gameMode.toUpperCase()}
+            </Badge>
+          </div>
           
           {/* Property Details */}
           {selectedProperty && (
@@ -214,6 +323,16 @@ const MonopolyGame: React.FC = () => {
                         Currently in Auction
                       </Badge>
                     )}
+
+                    {/* Build controls if owned by current player */}
+                    {selectedProperty.owner === currentPlayer.name && selectedProperty.type === 'property' && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button size="sm" variant="outline" onClick={() => buildHouse(selectedProperty.id)}>Build House</Button>
+                        <Button size="sm" variant="outline" onClick={() => sellHouse(selectedProperty.id)} disabled={selectedProperty.houses === 0}>Sell House</Button>
+                        <Button size="sm" variant="outline" onClick={() => buildHotel(selectedProperty.id)} disabled={selectedProperty.houses !== 4 || selectedProperty.hasHotel}>Build Hotel</Button>
+                        <Button size="sm" variant="outline" onClick={() => sellHotel(selectedProperty.id)} disabled={!selectedProperty.hasHotel}>Sell Hotel</Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -223,110 +342,112 @@ const MonopolyGame: React.FC = () => {
 
         {/* Right Column - Control Panels */}
         <div className="space-y-6">
-          {/* Legend / Pieces */}
-          <Card className="bg-white border border-slate-200 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-slate-800 text-base">Pieces & Money</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-3 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#ef4444' }} />
-                  <span className="text-slate-700">Player Token</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-3 bg-emerald-300 border border-emerald-400" />
-                  <span className="text-slate-700">House</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-3 bg-rose-300 border border-rose-400" />
-                  <span className="text-slate-700">Hotel</span>
-                </div>
-                <div className="flex items-center gap-2 col-span-3">
-                  <div className="flex -space-x-1">
-                    <div className="w-6 h-3 bg-yellow-200 border border-yellow-300" />
-                    <div className="w-6 h-3 bg-sky-200 border border-sky-300" />
-                    <div className="w-6 h-3 bg-pink-200 border border-pink-300" />
-                  </div>
-                  <span className="text-slate-700">Token Money</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Only show relevant panels based on game state */}
+          {gameState.gamePhase === 'playing' && (
+            <>
+              {/* Pre-Auction Panel */}
+              {gameState.preAuctionPhase && (
+                <PreAuctionPanel
+                  properties={gameState.properties}
+                  preAuctionProperties={gameState.settings.preAuctionProperties}
+                  currentAuction={currentAuctionData}
+                  players={gameState.players.map(p => p.name)}
+                  currentPlayer={currentPlayer.name}
+                  onPlaceBid={placeBid}
+                  onEndAuction={() => {
+                    // End current auction logic
+                    if (gameState.currentAuction) {
+                      // Auto-end auction logic here
+                    }
+                  }}
+                  onStartNextAuction={handleStartNextAuction}
+                  onFinishPreAuction={handleEndPreAuction}
+                />
+              )}
 
-          {/* Auction Panel */}
-          <AuctionPanel
-            currentAuction={currentAuctionData}
-            pendingPurchase={pendingPurchaseData}
-            ownedPropertyOnTile={ownedPropertyOnTile}
-            onPlaceBid={placeBid}
-            onBuyNow={() => {
-              if (gameState.pendingPurchase) {
-                purchaseProperty(gameState.pendingPurchase.propertyId);
-              }
-            }}
-            onSkipPurchase={() => skipPurchase()}
-            onStartAuction={(pid) => startAuction(pid)}
-            onMakeOffer={(amount) => {
-              if (ownedPropertyOnTile) {
-                makeOffer(ownedPropertyOnTile.id, ownedPropertyOnTile.owner as string, amount);
-              }
-            }}
-            players={gameState.players.map(p => p.name)}
-            currentPlayer={currentPlayer.name}
-          />
+              {/* Auction Panel */}
+              <AuctionPanel
+                currentAuction={currentAuctionData}
+                pendingPurchase={pendingPurchaseData}
+                ownedPropertyOnTile={ownedPropertyOnTile}
+                onPlaceBid={placeBid}
+                onBuyNow={() => {
+                  if (gameState.pendingPurchase) {
+                    purchaseProperty(gameState.pendingPurchase.propertyId);
+                  }
+                }}
+                onSkipPurchase={() => skipPurchase()}
+                onStartAuction={(pid) => startAuction(pid)}
+                onMakeOffer={(amount) => {
+                  if (ownedPropertyOnTile) {
+                    makeOffer(ownedPropertyOnTile.id, ownedPropertyOnTile.owner as string, amount);
+                  }
+                }}
+                players={gameState.players.map(p => p.name)}
+                currentPlayer={currentPlayer.name}
+              />
 
-          {/* Player Panel */}
-          <PlayerPanel
-            currentPlayer={currentPlayer}
-            allPlayers={gameState.players}
-            teams={gameState.teams}
-            ownedProperties={ownedProperties}
-            onMortgage={mortgageProperty}
-            onSell={handleSellProperty}
-            onTrade={handleTradeOffer}
-            onJoinTeam={joinTeam}
-            onCreateTeam={createTeam}
-            canTeam={gameState.settings.teamsEnabled}
-          />
+              {/* Player Panel */}
+              <PlayerPanel
+                currentPlayer={currentPlayer}
+                allPlayers={gameState.players}
+                teams={gameState.teams}
+                ownedProperties={ownedProperties}
+                onMortgage={mortgageProperty}
+                onUnmortgage={unmortgageProperty}
+                onSell={handleSellProperty}
+                onTrade={handleTradeOffer}
+                onJoinTeam={joinTeam}
+                onCreateTeam={createTeam}
+                canTeam={gameState.settings.teamsEnabled}
+              />
 
-          {/* Startup Setup Dialog */}
-          <Dialog open={showSetup}>
-            <DialogContent className="sm:max-w-md">
+              {/* Trading System */}
+              {gameState.settings.tradingEnabled && (
+                <TradingSystem
+                  currentPlayer={currentPlayer}
+                  allPlayers={gameState.players}
+                  ownedProperties={ownedProperties}
+                  tradeOffers={gameState.tradeOffers}
+                  onCreateTradeOffer={createTradeOffer}
+                  onAcceptTradeOffer={acceptTradeOffer}
+                  onRejectTradeOffer={rejectTradeOffer}
+                  onPlaceTradeBid={() => {}} // Placeholder for future bidding functionality
+                />
+              )}
+            </>
+          )}
+
+          {/* Pre-Auction Dialog */}
+          <Dialog open={showPreAuctionDialog} onOpenChange={setShowPreAuctionDialog}>
+            <DialogContent className="max-w-md bg-gradient-to-br from-slate-800 to-slate-900 border-2 border-yellow-400">
               <DialogHeader>
-                <DialogTitle>Game Setup</DialogTitle>
+                <DialogTitle className="text-2xl font-bold text-yellow-300 flex items-center gap-3">
+                  <Gavel className="w-6 h-6" />
+                  Pre-Auction Phase
+                </DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">Enable Auctions</Label>
-                  <Switch checked={setupAuctionsEnabled} onCheckedChange={setSetupAuctionsEnabled} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">Allow Teams</Label>
-                  <Switch checked={setupTeamsEnabled} onCheckedChange={setSetupTeamsEnabled} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">Mortgage System</Label>
-                  <Switch checked={setupMortgageEnabled} onCheckedChange={setSetupMortgageEnabled} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">Property Trading</Label>
-                  <Switch checked={setupTradingEnabled} onCheckedChange={setSetupTradingEnabled} />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm" htmlFor="auctionDuration">Auction Duration (seconds)</Label>
-                  <Input
-                    id="auctionDuration"
-                    type="number"
-                    min={15}
-                    step={15}
-                    value={setupAuctionDuration}
-                    onChange={(e) => setSetupAuctionDuration(parseInt(e.target.value || '0', 10))}
-                  />
+                <p className="text-yellow-200">
+                  You've enabled auction mode! Players will now auction for properties before the main game begins.
+                </p>
+                <div className="bg-yellow-500/20 p-4 rounded-lg border border-yellow-400/30">
+                  <h4 className="font-bold text-yellow-300 mb-2">Auction Rules:</h4>
+                  <ul className="text-sm text-yellow-200 space-y-1">
+                    <li>• Properties will be auctioned one by one</li>
+                    <li>• Starting bid is 70% of property value</li>
+                    <li>• Highest bidder wins the property</li>
+                    <li>• Regular Monopoly gameplay begins after auctions</li>
+                  </ul>
                 </div>
               </div>
-              <DialogFooter className="pt-4">
-                <Button onClick={handleApplySetup} className="w-full">Start Game</Button>
+              <DialogFooter>
+                <Button 
+                  onClick={handleStartGame}
+                  className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold"
+                >
+                  Start Pre-Auction
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>

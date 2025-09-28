@@ -83,12 +83,6 @@ const DiceRoller: React.FC<DiceRollerProps> = ({
               Total: {lastRoll.total}
             </div>
             
-            {lastRoll.isDouble && (
-              <Badge className="bg-auction-active animate-pulse-glow">
-                DOUBLES! Roll Again!
-              </Badge>
-            )}
-            
             <div className="text-xs text-muted-foreground">
               Rolled: {lastRoll.dice1} + {lastRoll.dice2}
             </div>
@@ -122,21 +116,11 @@ const DiceRoller: React.FC<DiceRollerProps> = ({
           {canRoll && !isRolling && (
             <p>Click to roll dice and move around the board</p>
           )}
+          {isRolling && (
+            <p>Rolling dice...</p>
+          )}
         </div>
 
-        {/* Doubles Counter */}
-        {lastRoll?.isDouble && (
-          <div className="text-center">
-            <div className="text-xs text-muted-foreground">
-              Consecutive doubles: 
-              <span className="ml-1 font-semibold text-foreground">
-                {/* This would be passed as a prop in real implementation */}
-                1
-              </span>
-              <span className="text-destructive ml-1">(3 = Jail!)</span>
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

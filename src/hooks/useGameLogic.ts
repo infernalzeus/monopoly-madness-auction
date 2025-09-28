@@ -8,10 +8,13 @@ import {
   Team,
   AuctionBid,
   DiceRoll,
-  GameEvent
+  GameEvent,
+  GameMode,
+  TradeOffer
 } from '@/types/game';
 
 const initialGameSettings: GameSettings = {
+  gameMode: 'console',
   auctionsEnabled: true,
   teamsEnabled: true,
   mortgageEnabled: true,
@@ -21,6 +24,20 @@ const initialGameSettings: GameSettings = {
   startingBalance: 1500000, // ₹15 lakh starting balance
   passGoReward: 200000, // ₹2 lakh for passing GO
   jailFine: 50000, // ₹50k to get out of jail
+  allowPropertyEditing: true,
+  preAuctionProperties: [],
+  customPropertyLists: {
+    'brown_group': ['prop-1', 'prop-3'],
+    'light_blue_group': ['prop-6', 'prop-8', 'prop-9'],
+    'pink_group': ['prop-11', 'prop-13', 'prop-14'],
+    'orange_group': ['prop-16', 'prop-18', 'prop-19'],
+    'red_group': ['prop-21', 'prop-23', 'prop-24'],
+    'yellow_group': ['prop-26', 'prop-27', 'prop-29'],
+    'green_group': ['prop-31', 'prop-32', 'prop-34'],
+    'dark_blue_group': ['prop-37', 'prop-39'],
+    'railroads': ['prop-5', 'prop-15', 'prop-25', 'prop-35'],
+    'utilities': ['prop-12', 'prop-28']
+  }
 };
 
 const generateInitialProperties = (): Property[] => {
@@ -28,10 +45,10 @@ const generateInitialProperties = (): Property[] => {
     // GO (position 0)
     { name: 'GO', type: 'special', colorGroup: undefined, rent: [0], position: 0 },
     
-    // Brown Group (1-3)
-    { name: 'Old Delhi', type: 'property', colorGroup: 'brown', rent: [2000, 10000, 30000, 90000, 160000, 250000], position: 1 },
+    // Brown Group (1-3) - Delhi area
+    { name: 'Delhi', type: 'property', colorGroup: 'brown', rent: [2000, 10000, 30000, 90000, 160000, 250000], position: 1 },
     { name: 'Community Chest', type: 'special', colorGroup: undefined, rent: [0], position: 2 },
-    { name: 'Chandni Chowk', type: 'property', colorGroup: 'brown', rent: [4000, 20000, 60000, 180000, 320000, 450000], position: 3 },
+    { name: 'Patna', type: 'property', colorGroup: 'brown', rent: [4000, 20000, 60000, 180000, 320000, 450000], position: 3 },
     
     // Income Tax (4)
     { name: 'Income Tax', type: 'special', colorGroup: undefined, rent: [0], position: 4 },
@@ -39,56 +56,56 @@ const generateInitialProperties = (): Property[] => {
     // Railroad (5)
     { name: 'Mumbai Local', type: 'railroad', colorGroup: undefined, rent: [25000, 50000, 100000, 200000], position: 5 },
     
-    // Light Blue Group (6-9)
-    { name: 'Andheri', type: 'property', colorGroup: 'lightBlue', rent: [6000, 30000, 90000, 270000, 400000, 550000], position: 6 },
+    // Light Blue Group (6-9) - Mumbai area
+    { name: 'Mumbai', type: 'property', colorGroup: 'lightBlue', rent: [6000, 30000, 90000, 270000, 400000, 550000], position: 6 },
     { name: 'Chance', type: 'special', colorGroup: undefined, rent: [0], position: 7 },
-    { name: 'Bandra', type: 'property', colorGroup: 'lightBlue', rent: [6000, 30000, 90000, 270000, 400000, 550000], position: 8 },
-    { name: 'Juhu Beach', type: 'property', colorGroup: 'lightBlue', rent: [8000, 40000, 100000, 300000, 450000, 600000], position: 9 },
+    { name: 'Pune', type: 'property', colorGroup: 'lightBlue', rent: [6000, 30000, 90000, 270000, 400000, 550000], position: 8 },
+    { name: 'Nashik', type: 'property', colorGroup: 'lightBlue', rent: [8000, 40000, 100000, 300000, 450000, 600000], position: 9 },
     
     // Jail (10)
     { name: 'Jail', type: 'special', colorGroup: undefined, rent: [0], position: 10 },
     
-    // Pink Group (11-14)
-    { name: 'Brigade Road', type: 'property', colorGroup: 'pink', rent: [10000, 50000, 150000, 450000, 625000, 750000], position: 11 },
+    // Pink Group (11-14) - Bangalore area
+    { name: 'Bangalore', type: 'property', colorGroup: 'pink', rent: [10000, 50000, 150000, 450000, 625000, 750000], position: 11 },
     { name: 'Electric Company', type: 'utility', colorGroup: undefined, rent: [0], position: 12 },
-    { name: 'Commercial St', type: 'property', colorGroup: 'pink', rent: [10000, 50000, 150000, 450000, 625000, 750000], position: 13 },
-    { name: 'MG Road', type: 'property', colorGroup: 'pink', rent: [12000, 60000, 180000, 500000, 700000, 900000], position: 14 },
+    { name: 'Mysore', type: 'property', colorGroup: 'pink', rent: [10000, 50000, 150000, 450000, 625000, 750000], position: 13 },
+    { name: 'Mangalore', type: 'property', colorGroup: 'pink', rent: [12000, 60000, 180000, 500000, 700000, 900000], position: 14 },
     
     // Railroad (15)
     { name: 'Chennai Metro', type: 'railroad', colorGroup: undefined, rent: [25000, 50000, 100000, 200000], position: 15 },
     
-    // Orange Group (16-19)
-    { name: 'Anna Salai', type: 'property', colorGroup: 'orange', rent: [14000, 70000, 200000, 550000, 750000, 950000], position: 16 },
+    // Orange Group (16-19) - Chennai area
+    { name: 'Chennai', type: 'property', colorGroup: 'orange', rent: [14000, 70000, 200000, 550000, 750000, 950000], position: 16 },
     { name: 'Community Chest', type: 'special', colorGroup: undefined, rent: [0], position: 17 },
-    { name: 'T Nagar', type: 'property', colorGroup: 'orange', rent: [14000, 70000, 200000, 550000, 750000, 950000], position: 18 },
-    { name: 'Marina Beach', type: 'property', colorGroup: 'orange', rent: [16000, 80000, 220000, 600000, 800000, 1000000], position: 19 },
+    { name: 'Coimbatore', type: 'property', colorGroup: 'orange', rent: [14000, 70000, 200000, 550000, 750000, 950000], position: 18 },
+    { name: 'Madurai', type: 'property', colorGroup: 'orange', rent: [16000, 80000, 220000, 600000, 800000, 1000000], position: 19 },
     
     // Free Parking (20)
     { name: 'Free Parking', type: 'special', colorGroup: undefined, rent: [0], position: 20 },
     
-    // Red Group (21-24)
-    { name: 'Park Street', type: 'property', colorGroup: 'red', rent: [18000, 90000, 250000, 700000, 875000, 1050000], position: 21 },
+    // Red Group (21-24) - Kolkata area
+    { name: 'Kolkata', type: 'property', colorGroup: 'red', rent: [18000, 90000, 250000, 700000, 875000, 1050000], position: 21 },
     { name: 'Chance', type: 'special', colorGroup: undefined, rent: [0], position: 22 },
-    { name: 'Salt Lake City', type: 'property', colorGroup: 'red', rent: [18000, 90000, 250000, 700000, 875000, 1050000], position: 23 },
-    { name: 'New Market', type: 'property', colorGroup: 'red', rent: [20000, 100000, 300000, 750000, 925000, 1100000], position: 24 },
+    { name: 'Durgapur', type: 'property', colorGroup: 'red', rent: [18000, 90000, 250000, 700000, 875000, 1050000], position: 23 },
+    { name: 'Siliguri', type: 'property', colorGroup: 'red', rent: [20000, 100000, 300000, 750000, 925000, 1100000], position: 24 },
     
     // Railroad (25)
     { name: 'Delhi Metro', type: 'railroad', colorGroup: undefined, rent: [25000, 50000, 100000, 200000], position: 25 },
     
-    // Yellow Group (26-29)
-    { name: 'Connaught Place', type: 'property', colorGroup: 'yellow', rent: [22000, 110000, 330000, 800000, 975000, 1150000], position: 26 },
-    { name: 'Khan Market', type: 'property', colorGroup: 'yellow', rent: [22000, 110000, 330000, 800000, 975000, 1150000], position: 27 },
+    // Yellow Group (26-29) - Delhi area
+    { name: 'Gurgaon', type: 'property', colorGroup: 'yellow', rent: [22000, 110000, 330000, 800000, 975000, 1150000], position: 26 },
+    { name: 'Noida', type: 'property', colorGroup: 'yellow', rent: [22000, 110000, 330000, 800000, 975000, 1150000], position: 27 },
     { name: 'Water Works', type: 'utility', colorGroup: undefined, rent: [0], position: 28 },
-    { name: 'India Gate', type: 'property', colorGroup: 'yellow', rent: [24000, 120000, 360000, 850000, 1025000, 1200000], position: 29 },
+    { name: 'Faridabad', type: 'property', colorGroup: 'yellow', rent: [24000, 120000, 360000, 850000, 1025000, 1200000], position: 29 },
     
     // Go to Jail (30)
     { name: 'Go to Jail', type: 'special', colorGroup: undefined, rent: [0], position: 30 },
     
-    // Green Group (31-34)
-    { name: 'Hitech City', type: 'property', colorGroup: 'green', rent: [26000, 130000, 390000, 900000, 1100000, 1275000], position: 31 },
-    { name: 'Banjara Hills', type: 'property', colorGroup: 'green', rent: [26000, 130000, 390000, 900000, 1100000, 1275000], position: 32 },
+    // Green Group (31-34) - Hyderabad area
+    { name: 'Hyderabad', type: 'property', colorGroup: 'green', rent: [26000, 130000, 390000, 900000, 1100000, 1275000], position: 31 },
+    { name: 'Secunderabad', type: 'property', colorGroup: 'green', rent: [26000, 130000, 390000, 900000, 1100000, 1275000], position: 32 },
     { name: 'Community Chest', type: 'special', colorGroup: undefined, rent: [0], position: 33 },
-    { name: 'Jubilee Hills', type: 'property', colorGroup: 'green', rent: [28000, 150000, 450000, 1000000, 1200000, 1400000], position: 34 },
+    { name: 'Warangal', type: 'property', colorGroup: 'green', rent: [28000, 150000, 450000, 1000000, 1200000, 1400000], position: 34 },
     
     // Railroad (35)
     { name: 'Hyderabad Metro', type: 'railroad', colorGroup: undefined, rent: [25000, 50000, 100000, 200000], position: 35 },
@@ -96,10 +113,10 @@ const generateInitialProperties = (): Property[] => {
     // Chance (36)
     { name: 'Chance', type: 'special', colorGroup: undefined, rent: [0], position: 36 },
     
-    // Dark Blue Group (37-39)
-    { name: 'Cyber City', type: 'property', colorGroup: 'darkBlue', rent: [35000, 175000, 500000, 1100000, 1300000, 1500000], position: 37 },
+    // Dark Blue Group (37-39) - Gurgaon/Delhi area
+    { name: 'Indore', type: 'property', colorGroup: 'darkBlue', rent: [35000, 175000, 500000, 1100000, 1300000, 1500000], position: 37 },
     { name: 'Luxury Tax', type: 'special', colorGroup: undefined, rent: [0], position: 38 },
-    { name: 'DLF Phase 1', type: 'property', colorGroup: 'darkBlue', rent: [50000, 200000, 600000, 1400000, 1700000, 2000000], position: 39 }
+    { name: 'Bhopal', type: 'property', colorGroup: 'darkBlue', rent: [50000, 200000, 600000, 1400000, 1700000, 2000000], position: 39 }
   ];
 
   return indianProperties.map((prop, index) => ({
@@ -125,8 +142,8 @@ const generateInitialProperties = (): Property[] => {
 
 const generateInitialPlayers = (): Player[] => {
   const playerNames = ['You', 'Alice', 'Bob', 'Charlie'];
-  const colors = ['#4F46E5', '#059669', '#DC2626', '#7C2D12'];
-  const icons = ['🎮', '🎯', '⚡', '🚀'];
+  const colors = ['#DC2626', '#2563EB', '#16A34A', '#EAB308']; // Red, Blue, Green, Yellow
+  const icons = ['🔴', '🔵', '🟢', '🟡'];
 
   return playerNames.map((name, index) => ({
     id: `player-${index + 1}`,
@@ -149,17 +166,61 @@ export const useGameLogic = () => {
     teams: [],
     currentAuction: null,
     settings: initialGameSettings,
-    gamePhase: 'playing',
+    gamePhase: 'setup',
     turn: 0,
     currentPlayer: 'player-1',
     lastDiceRoll: null,
     gameEvents: [],
     doubleCount: 0,
-    pendingPurchase: null
+    pendingPurchase: null,
+    winnerId: null,
+    turnState: 'waiting_for_roll',
+    preAuctionPhase: false,
+    consoleOpen: true,
+    tradeOffers: []
   });
 
   const [auctionTimer, setAuctionTimer] = useState<number | null>(null);
   const [isRolling, setIsRolling] = useState(false);
+
+  // Chance and Community Chest decks (16 each). Simple representative effects.
+  const chanceDeck = useState(() => shuffleArray([
+    { id: 'ch-1', type: 'move', value: 0, message: 'Advance to GO (Collect ₹2,00,000)' },
+    { id: 'ch-2', type: 'pay', value: 150000, message: 'Pay school fees of ₹1,50,000' },
+    { id: 'ch-3', type: 'collect', value: 100000, message: 'Bank pays you dividend of ₹1,00,000' },
+    { id: 'ch-4', type: 'move', value: 24, message: 'Advance to New Market' },
+    { id: 'ch-5', type: 'jail', value: 0, message: 'Go to Jail' },
+    { id: 'ch-6', type: 'outOfJail', value: 0, message: 'Get out of Jail free (keep until needed)' },
+    { id: 'ch-7', type: 'collect', value: 50000, message: 'Your building loan matures – collect ₹50,000' },
+    { id: 'ch-8', type: 'pay', value: 25000, message: 'Speeding fine – pay ₹25,000' },
+    { id: 'ch-9', type: 'move', value: 11, message: 'Go to Brigade Road' },
+    { id: 'ch-10', type: 'collect', value: 200000, message: 'You have won a crossword competition – collect ₹2,00,000' },
+    { id: 'ch-11', type: 'pay', value: 100000, message: 'Pay income tax arrears of ₹1,00,000' },
+    { id: 'ch-12', type: 'collect', value: 150000, message: 'Your stocks rise – collect ₹1,50,000' },
+    { id: 'ch-13', type: 'move', value: 5, message: 'Take a trip on Mumbai Local – if you pass GO collect ₹2,00,000' },
+    { id: 'ch-14', type: 'move', value: 39, message: 'Advance to DLF Phase 1' },
+    { id: 'ch-15', type: 'collect', value: 50000, message: 'Insurance payout – collect ₹50,000' },
+    { id: 'ch-16', type: 'pay', value: 50000, message: 'Doctor’s fees – pay ₹50,000' }
+  ]))[0];
+  const communityDeck = useState(() => shuffleArray([
+    { id: 'cc-1', type: 'collect', value: 200000, message: 'Advance to GO (Collect ₹2,00,000)' },
+    { id: 'cc-2', type: 'collect', value: 100000, message: 'You inherit ₹1,00,000' },
+    { id: 'cc-3', type: 'pay', value: 50000, message: 'Pay hospital fees of ₹50,000' },
+    { id: 'cc-4', type: 'collect', value: 50000, message: 'From sale of stock you get ₹50,000' },
+    { id: 'cc-5', type: 'collect', value: 25000, message: 'Receive interest on 7% preference shares – ₹25,000' },
+    { id: 'cc-6', type: 'jail', value: 0, message: 'Go to Jail' },
+    { id: 'cc-7', type: 'outOfJail', value: 0, message: 'Get out of Jail free (keep until needed)' },
+    { id: 'cc-8', type: 'pay', value: 25000, message: 'Pay education fees of ₹25,000' },
+    { id: 'cc-9', type: 'collect', value: 50000, message: 'You have won second prize in a beauty contest – collect ₹50,000' },
+    { id: 'cc-10', type: 'collect', value: 100000, message: 'Grand Opera Night – collect ₹1,00,000' },
+    { id: 'cc-11', type: 'collect', value: 50000, message: 'Income tax refund – collect ₹50,000' },
+    { id: 'cc-12', type: 'pay', value: 100000, message: 'Life insurance premium due – pay ₹1,00,000' },
+    { id: 'cc-13', type: 'collect', value: 75000, message: 'Birthday gift – collect ₹75,000' },
+    { id: 'cc-14', type: 'pay', value: 25000, message: 'Speeding fine – pay ₹25,000' },
+    { id: 'cc-15', type: 'collect', value: 150000, message: 'Tax rebate – collect ₹1,50,000' },
+    { id: 'cc-16', type: 'pay', value: 50000, message: 'Maintenance – pay ₹50,000' }
+  ]))[0];
+  const [heldOutOfJailCards, setHeldOutOfJailCards] = useState<Record<string, number>>({});
 
   // Helper function to add game events
   const addGameEvent = useCallback((type: GameEvent['type'], player: string, message: string, amount?: number) => {
@@ -199,11 +260,101 @@ export const useGameLogic = () => {
         if (candidate.isActive) break;
         nextIndex = (nextIndex + 1) % playerCount;
       }
-      return {
+      const nextState: GameState = {
         ...prev,
         turn: prev.turn + 1,
-        currentPlayer: prev.players[nextIndex].id
+        currentPlayer: prev.players[nextIndex].id,
+        turnState: 'waiting_for_roll',
+        lastDiceRoll: null,
+        pendingPurchase: null
       };
+      return nextState;
+    });
+  }, []);
+
+  const endTurn = useCallback(() => {
+    advanceTurn();
+  }, [advanceTurn]);
+
+  const getOwnedCount = useCallback((ownerName: string, filter: (p: Property) => boolean) => {
+    return gameState.properties.filter(p => p.owner === ownerName && filter(p)).length;
+  }, [gameState.properties]);
+
+  const playerOwnsMonopoly = useCallback((ownerName: string, color: string) => {
+    const group = gameState.properties.filter(p => p.type === 'property' && p.colorGroup === color);
+    return group.length > 0 && group.every(p => p.owner === ownerName && !p.isMortgaged);
+  }, [gameState.properties]);
+
+  const computeRent = useCallback((property: Property, diceTotal: number | null) => {
+    if (property.isMortgaged) return 0;
+    if (property.type === 'railroad') {
+      const ownerName = property.owner as string;
+      const count = getOwnedCount(ownerName, p => p.type === 'railroad');
+      const index = Math.max(1, Math.min(4, count)) - 1;
+      return property.rent[index] || 0;
+    }
+    if (property.type === 'utility') {
+      const ownerName = property.owner as string;
+      const count = getOwnedCount(ownerName, p => p.type === 'utility');
+      const mult = count >= 2 ? 10 : 4; // Standard rules: 4x or 10x dice total
+      return (diceTotal || 0) * mult * 1000; // scale to thousands
+    }
+    if (property.type === 'property') {
+      // rent array indexes: [base, 1h, 2h, 3h, 4h, hotel]
+      if (property.hasHotel) return property.rent[5] || 0;
+      if (property.houses > 0) return property.rent[property.houses] || 0;
+      const hasMonopoly = property.colorGroup ? playerOwnsMonopoly(property.owner as string, property.colorGroup) : false;
+      return hasMonopoly ? Math.round((property.rent[0] || 0) * 2) : (property.rent[0] || 0);
+    }
+    return 0;
+  }, [getOwnedCount, playerOwnsMonopoly]);
+
+  const applyPayment = useCallback((fromId: string, toPlayerName: string | null, amount: number, reason: string) => {
+    setGameState(prev => {
+      let players = [...prev.players];
+      const payerIdx = players.findIndex(p => p.id === fromId);
+      if (payerIdx === -1) return prev;
+      let payer = players[payerIdx];
+      payer = { ...payer, balance: payer.balance - amount };
+      players[payerIdx] = payer;
+
+      if (toPlayerName) {
+        const receiverIdx = players.findIndex(p => p.name === toPlayerName);
+        if (receiverIdx !== -1) {
+          players[receiverIdx] = { ...players[receiverIdx], balance: players[receiverIdx].balance + amount };
+        }
+      }
+
+      // Check bankruptcy
+      if (payer.balance < 0) {
+        // Transfer all properties to creditor if exists, else mortgage to bank and remove
+        const creditorName = toPlayerName;
+        const payerName = payer.name;
+        const transferredProps = prev.properties.map(prop => {
+          if (prop.owner === payerName) {
+            if (creditorName) {
+              return { ...prop, owner: creditorName };
+            }
+            return { ...prop, owner: undefined, isOwned: false, isMortgaged: false, houses: 0, hasHotel: false };
+          }
+          return prop;
+        });
+
+        players[payerIdx] = { ...payer, isActive: false };
+
+        const activePlayers = players.filter(p => p.isActive);
+        const winnerId = activePlayers.length === 1 ? activePlayers[0].id : null;
+
+        return {
+          ...prev,
+          players,
+          properties: transferredProps,
+          gamePhase: winnerId ? 'ended' : prev.gamePhase,
+          winnerId: winnerId || null
+        };
+      }
+
+      return { ...prev, players };
     });
   }, []);
 
@@ -234,10 +385,10 @@ export const useGameLogic = () => {
 
   // Handle dice roll and player movement
   const handleDiceRoll = useCallback(() => {
-    if (isRolling) return;
-    // Allow rolling even if an auction exists or a purchase was pending; we'll auto-resolve
+    if (isRolling || gameState.turnState !== 'waiting_for_roll') return;
     
     setIsRolling(true);
+    setGameState(prev => ({ ...prev, turnState: 'processing' }));
     
     setTimeout(() => {
       const diceResult = rollDice();
@@ -245,6 +396,7 @@ export const useGameLogic = () => {
       
       if (!currentPlayerData) {
         setIsRolling(false);
+        setGameState(prev => ({ ...prev, turnState: 'waiting_for_roll' }));
         return;
       }
 
@@ -263,21 +415,27 @@ export const useGameLogic = () => {
           return player;
         });
 
-        // Double-roll rule disabled; always reset double count
-        const newDoubleCount = 0;
         const movingPlayer = newPlayers.find(p => p.id === prev.currentPlayer)!;
         const landedProperty = prev.properties.find(p => p.position === movingPlayer.position);
         const isBuyable = landedProperty && (landedProperty.type === 'property' || landedProperty.type === 'railroad' || landedProperty.type === 'utility');
         const shouldOfferPurchase = Boolean(isBuyable && landedProperty && !landedProperty.isOwned);
         
-        return {
+        let nextState: GameState = {
           ...prev,
           players: newPlayers,
           lastDiceRoll: diceResult,
-          doubleCount: newDoubleCount,
-          // If landed on an unowned, buyable property, prompt current player to purchase
+          doubleCount: 0,
+          turnState: shouldOfferPurchase ? 'waiting_for_action' : 'completed',
           pendingPurchase: shouldOfferPurchase ? { propertyId: landedProperty!.id, playerId: prev.currentPlayer } : null
         };
+
+        // Handle special tiles
+        if (landedProperty && landedProperty.name === 'Go to Jail') {
+          nextState = movePlayerToJail(nextState, prev.currentPlayer);
+          nextState.turnState = 'completed';
+        }
+
+        return nextState;
       });
 
       // Add event for the move
@@ -294,16 +452,28 @@ export const useGameLogic = () => {
           passedGo ? gameState.settings.passGoReward : undefined
         );
 
-        // If landed on an unowned buyable property, a purchase prompt is shown via pendingPurchase
-        // Otherwise, advance turn immediately
-        if (!(property && (property.type === 'property' || property.type === 'railroad' || property.type === 'utility') && !property.isOwned)) {
-          advanceTurn();
+        // Resolve tile effects
+        if (property) {
+          if (property.name === 'Income Tax') {
+            applyPayment(gameState.currentPlayer, null, 200000, 'Income Tax');
+            setGameState(prev => ({ ...prev, turnState: 'completed' }));
+          } else if (property.name === 'Luxury Tax') {
+            applyPayment(gameState.currentPlayer, null, 100000, 'Luxury Tax');
+            setGameState(prev => ({ ...prev, turnState: 'completed' }));
+          } else if (property.name === 'Chance' || property.name === 'Community Chest') {
+            drawCard(property.name === 'Chance' ? 'chance' : 'community');
+            setGameState(prev => ({ ...prev, turnState: 'completed' }));
+          } else if ((property.type === 'property' || property.type === 'railroad' || property.type === 'utility') && property.isOwned && property.owner !== currentPlayer.name && !property.isMortgaged) {
+            // New rule: do not charge rent on landing; instead allow player to make an offer
+            addGameEvent('move', currentPlayer.name, `landed on ${property.name} owned by ${property.owner}. No rent charged; you may make an offer.`);
+            setGameState(prev => ({ ...prev, turnState: 'completed' }));
+          }
         }
       }
 
       setIsRolling(false);
     }, 1000);
-  }, [gameState.players, gameState.currentPlayer, gameState.properties, gameState.settings, rollDice, addGameEvent, isRolling, startAuction, advanceTurn]);
+  }, [gameState.players, gameState.currentPlayer, gameState.properties, gameState.settings, rollDice, addGameEvent, isRolling, advanceTurn, computeRent, applyPayment, gameState.turnState]);
 
   
 
@@ -517,7 +687,171 @@ export const useGameLogic = () => {
           : player
       )
     }));
+    addGameEvent('mortgage', currentPlayer.name, `mortgaged ${property.name}`, mortgageValue);
   }, [gameState.properties, gameState.players, gameState.currentPlayer]);
+
+  const unmortgageProperty = useCallback((propertyId: string) => {
+    const property = gameState.properties.find(p => p.id === propertyId);
+    const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayer);
+    if (!property || !currentPlayer || property.owner !== currentPlayer.name || !property.isMortgaged) return;
+    const cost = Math.round(property.currentValue * 0.55); // 10% interest over 50%
+    if (currentPlayer.balance < cost) return;
+    setGameState(prev => ({
+      ...prev,
+      properties: prev.properties.map(p => p.id === propertyId ? { ...p, isMortgaged: false } : p),
+      players: prev.players.map(pl => pl.id === currentPlayer.id ? { ...pl, balance: pl.balance - cost } : pl)
+    }));
+    addGameEvent('mortgage', currentPlayer.name, `unmortgaged ${property.name}`, -cost);
+  }, [gameState.properties, gameState.players, gameState.currentPlayer, addGameEvent]);
+
+  const canBuildHouse = useCallback((property: Property, ownerName: string) => {
+    if (property.type !== 'property' || property.isMortgaged || property.hasHotel) return false;
+    if (property.owner !== ownerName) return false;
+    if (!property.colorGroup) return false;
+    if (!playerOwnsMonopoly(ownerName, property.colorGroup)) return false;
+    if (property.houses >= 4) return false;
+    // Even build rule: cannot build more than one ahead of others in group
+    const group = gameState.properties.filter(p => p.type === 'property' && p.colorGroup === property.colorGroup && p.owner === ownerName);
+    const minHouses = Math.min(...group.map(g => g.houses));
+    return property.houses <= minHouses;
+  }, [gameState.properties, playerOwnsMonopoly]);
+
+  const buildHouse = useCallback((propertyId: string) => {
+    const property = gameState.properties.find(p => p.id === propertyId);
+    const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayer);
+    if (!property || !currentPlayer) return;
+    if (!canBuildHouse(property, currentPlayer.name)) return;
+    const cost = property.houseCost || 0;
+    if (currentPlayer.balance < cost) return;
+    setGameState(prev => ({
+      ...prev,
+      properties: prev.properties.map(p => p.id === propertyId ? { ...p, houses: p.houses + 1 } : p),
+      players: prev.players.map(pl => pl.id === currentPlayer.id ? { ...pl, balance: pl.balance - cost } : pl)
+    }));
+    addGameEvent('build', currentPlayer.name, `built a house on ${property.name}`, -cost);
+  }, [gameState.properties, gameState.players, gameState.currentPlayer, canBuildHouse, addGameEvent]);
+
+  const sellHouse = useCallback((propertyId: string) => {
+    const property = gameState.properties.find(p => p.id === propertyId);
+    const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayer);
+    if (!property || !currentPlayer) return;
+    if (property.type !== 'property' || property.houses <= 0) return;
+    // Even selling rule: cannot make this lower than others by more than 1; we allow basic sell
+    const refund = Math.round((property.houseCost || 0) * 0.5);
+    setGameState(prev => ({
+      ...prev,
+      properties: prev.properties.map(p => p.id === propertyId ? { ...p, houses: p.houses - 1 } : p),
+      players: prev.players.map(pl => pl.id === currentPlayer.id ? { ...pl, balance: pl.balance + refund } : pl)
+    }));
+    addGameEvent('build', currentPlayer.name, `sold a house on ${property.name}`, refund);
+  }, [gameState.properties, gameState.players, gameState.currentPlayer, addGameEvent]);
+
+  const buildHotel = useCallback((propertyId: string) => {
+    const property = gameState.properties.find(p => p.id === propertyId);
+    const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayer);
+    if (!property || !currentPlayer) return;
+    if (property.type !== 'property' || property.hasHotel || property.houses !== 4) return;
+    const cost = property.hotelCost || 0;
+    if (currentPlayer.balance < cost) return;
+    setGameState(prev => ({
+      ...prev,
+      properties: prev.properties.map(p => p.id === propertyId ? { ...p, hasHotel: true, houses: 0 } : p),
+      players: prev.players.map(pl => pl.id === currentPlayer.id ? { ...pl, balance: pl.balance - cost } : pl)
+    }));
+    addGameEvent('build', currentPlayer.name, `built a hotel on ${property.name}`, -cost);
+  }, [gameState.properties, gameState.players, gameState.currentPlayer, addGameEvent]);
+
+  const sellHotel = useCallback((propertyId: string) => {
+    const property = gameState.properties.find(p => p.id === propertyId);
+    const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayer);
+    if (!property || !currentPlayer) return;
+    if (property.type !== 'property' || !property.hasHotel) return;
+    const refund = Math.round((property.hotelCost || 0) * 0.5);
+    setGameState(prev => ({
+      ...prev,
+      properties: prev.properties.map(p => p.id === propertyId ? { ...p, hasHotel: false, houses: 4 } : p),
+      players: prev.players.map(pl => pl.id === currentPlayer.id ? { ...pl, balance: pl.balance + refund } : pl)
+    }));
+    addGameEvent('build', currentPlayer.name, `sold a hotel on ${property.name}`, refund);
+  }, [gameState.properties, gameState.players, gameState.currentPlayer, addGameEvent]);
+
+  function movePlayerToJail(state: GameState, playerId: string): GameState {
+    const players = state.players.map(p => p.id === playerId ? { ...p, position: 10, isInJail: true, jailTurns: 3 } : p);
+    return { ...state, players };
+  }
+
+  const drawCard = useCallback((deck: 'chance' | 'community') => {
+    const card = deck === 'chance' ? chanceDeck.shift() : communityDeck.shift();
+    if (!card) return;
+    const cp = gameState.players.find(p => p.id === gameState.currentPlayer);
+    if (!cp) return;
+    addGameEvent('card', cp.name, card.message);
+    switch (card.type) {
+      case 'collect':
+        setGameState(prev => ({
+          ...prev,
+          players: prev.players.map(pl => pl.id === prev.currentPlayer ? { ...pl, balance: pl.balance + card.value } : pl)
+        }));
+        break;
+      case 'pay':
+        applyPayment(gameState.currentPlayer, null, card.value, 'Card');
+        break;
+      case 'move':
+        setGameState(prev => ({
+          ...prev,
+          players: prev.players.map(pl => pl.id === prev.currentPlayer ? { ...pl, position: card.value } : pl)
+        }));
+        break;
+      case 'jail':
+        setGameState(prev => movePlayerToJail(prev, prev.currentPlayer));
+        break;
+      case 'outOfJail':
+        setHeldOutOfJailCards(prev => ({ ...prev, [gameState.currentPlayer]: (prev[gameState.currentPlayer] || 0) + 1 }));
+        break;
+      default:
+        break;
+    }
+    // Put card to bottom
+    if (deck === 'chance') chanceDeck.push(card);
+    else communityDeck.push(card);
+  }, [addGameEvent, applyPayment, chanceDeck, communityDeck, gameState.currentPlayer, gameState.players]);
+
+  // Save/Load
+  const saveGame = useCallback(() => {
+    const toSave = JSON.stringify(gameState);
+    try { localStorage.setItem('mma:gameState', toSave); } catch {}
+  }, [gameState]);
+
+  const loadGame = useCallback(() => {
+    try {
+      const s = localStorage.getItem('mma:gameState');
+      if (!s) return;
+      const parsed: GameState = JSON.parse(s);
+      setGameState(parsed);
+    } catch {}
+  }, []);
+
+  const resetGameToInitial = useCallback(() => {
+    setGameState({
+      properties: generateInitialProperties(),
+      players: generateInitialPlayers(),
+      teams: [],
+      currentAuction: null,
+      settings: initialGameSettings,
+      gamePhase: 'setup',
+      turn: 0,
+      currentPlayer: 'player-1',
+      lastDiceRoll: null,
+      gameEvents: [],
+      doubleCount: 0,
+      pendingPurchase: null,
+      winnerId: null,
+      turnState: 'waiting_for_roll',
+      preAuctionPhase: false,
+      consoleOpen: false,
+      tradeOffers: []
+    });
+  }, []);
 
   const createTeam = useCallback((teamName: string) => {
     const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayer);
@@ -558,6 +892,210 @@ export const useGameLogic = () => {
     }));
   }, []);
 
+  // Game mode management
+  const setGameMode = useCallback((mode: GameMode) => {
+    setGameState(prev => ({
+      ...prev,
+      settings: { ...prev.settings, gameMode: mode },
+      gamePhase: mode === 'auction' ? 'auction' : mode === 'console' ? 'setup' : 'playing',
+      preAuctionPhase: mode === 'auction',
+      consoleOpen: mode === 'console',
+      turnState: 'waiting_for_roll'
+    }));
+  }, []);
+
+  const startPreAuction = useCallback(() => {
+    if (gameState.settings.gameMode !== 'auction') return;
+    
+    setGameState(prev => ({
+      ...prev,
+      gamePhase: 'auction',
+      preAuctionPhase: true,
+      turnState: 'waiting_for_roll'
+    }));
+  }, [gameState.settings.gameMode]);
+
+  const endPreAuction = useCallback(() => {
+    setGameState(prev => ({
+      ...prev,
+      gamePhase: 'playing',
+      preAuctionPhase: false,
+      turnState: 'waiting_for_roll'
+    }));
+  }, []);
+
+  // Console management
+  const toggleConsole = useCallback(() => {
+    setGameState(prev => ({
+      ...prev,
+      consoleOpen: !prev.consoleOpen
+    }));
+  }, []);
+
+  const updatePropertyList = useCallback((listName: string, propertyIds: string[]) => {
+    setGameState(prev => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        customPropertyLists: {
+          ...prev.settings.customPropertyLists,
+          [listName]: propertyIds
+        }
+      }
+    }));
+  }, []);
+
+  const addPropertyToList = useCallback((listName: string, propertyId: string) => {
+    setGameState(prev => {
+      const currentList = prev.settings.customPropertyLists[listName] || [];
+      if (currentList.includes(propertyId)) return prev;
+      
+      return {
+        ...prev,
+        settings: {
+          ...prev.settings,
+          customPropertyLists: {
+            ...prev.settings.customPropertyLists,
+            [listName]: [...currentList, propertyId]
+          }
+        }
+      };
+    });
+  }, []);
+
+  const removePropertyFromList = useCallback((listName: string, propertyId: string) => {
+    setGameState(prev => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        customPropertyLists: {
+          ...prev.settings.customPropertyLists,
+          [listName]: (prev.settings.customPropertyLists[listName] || []).filter(id => id !== propertyId)
+        }
+      }
+    }));
+  }, []);
+
+  const setPreAuctionProperties = useCallback((propertyIds: string[]) => {
+    setGameState(prev => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        preAuctionProperties: propertyIds
+      }
+    }));
+  }, []);
+
+  // Property editing
+  const updateProperty = useCallback((propertyId: string, updates: Partial<Property>) => {
+    setGameState(prev => ({
+      ...prev,
+      properties: prev.properties.map(p => 
+        p.id === propertyId ? { ...p, ...updates } : p
+      )
+    }));
+  }, []);
+
+  // Trading functions
+  const createTradeOffer = useCallback((
+    toPlayer: string, 
+    offeredProperties: string[], 
+    requestedProperties: string[], 
+    offeredCash: number, 
+    requestedCash: number
+  ) => {
+    const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayer);
+    if (!currentPlayer) return;
+
+    const tradeOffer: TradeOffer = {
+      id: `trade-${Date.now()}`,
+      fromPlayer: currentPlayer.name,
+      toPlayer,
+      offeredProperties,
+      requestedProperties,
+      offeredCash,
+      requestedCash,
+      status: 'pending',
+      expiresAt: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+    };
+
+    setGameState(prev => ({
+      ...prev,
+      tradeOffers: [...prev.tradeOffers, tradeOffer]
+    }));
+
+    addGameEvent(
+      'trade',
+      currentPlayer.name,
+      `offered trade to ${toPlayer}`,
+      offeredCash - requestedCash
+    );
+  }, [gameState.players, gameState.currentPlayer, addGameEvent]);
+
+  const acceptTradeOffer = useCallback((offerId: string) => {
+    const offer = gameState.tradeOffers.find(o => o.id === offerId);
+    if (!offer || offer.status !== 'pending') return;
+
+    setGameState(prev => {
+      const newProperties = prev.properties.map(prop => {
+        // Transfer offered properties to the recipient
+        if (offer.offeredProperties.includes(prop.id)) {
+          return { ...prop, owner: offer.toPlayer };
+        }
+        // Transfer requested properties to the offerer
+        if (offer.requestedProperties.includes(prop.id)) {
+          return { ...prop, owner: offer.fromPlayer };
+        }
+        return prop;
+      });
+
+      const newPlayers = prev.players.map(player => {
+        if (player.name === offer.fromPlayer) {
+          return {
+            ...player,
+            balance: player.balance - offer.offeredCash + offer.requestedCash,
+            properties: [
+              ...player.properties.filter(p => !offer.offeredProperties.includes(p)),
+              ...offer.requestedProperties
+            ]
+          };
+        }
+        if (player.name === offer.toPlayer) {
+          return {
+            ...player,
+            balance: player.balance + offer.offeredCash - offer.requestedCash,
+            properties: [
+              ...player.properties.filter(p => !offer.requestedProperties.includes(p)),
+              ...offer.offeredProperties
+            ]
+          };
+        }
+        return player;
+      });
+
+      return {
+        ...prev,
+        properties: newProperties,
+        players: newPlayers,
+        tradeOffers: prev.tradeOffers.map(o => 
+          o.id === offerId ? { ...o, status: 'accepted' as const } : o
+        )
+      };
+    });
+
+    addGameEvent('trade', offer.toPlayer, `accepted trade from ${offer.fromPlayer}`);
+  }, [gameState.tradeOffers, gameState.properties, gameState.players, addGameEvent]);
+
+  const rejectTradeOffer = useCallback((offerId: string) => {
+    setGameState(prev => ({
+      ...prev,
+      tradeOffers: prev.tradeOffers.map(o => 
+        o.id === offerId ? { ...o, status: 'rejected' as const } : o
+      )
+    }));
+  }, []);
+
+
   return {
     gameState,
     auctionTimer,
@@ -570,9 +1108,42 @@ export const useGameLogic = () => {
     skipPurchase,
     makeOffer,
     mortgageProperty,
+    unmortgageProperty,
     createTeam,
     joinTeam,
     updateSettings,
-    handleDiceRoll
+    handleDiceRoll,
+    buildHouse,
+    sellHouse,
+    buildHotel,
+    sellHotel,
+    endTurn,
+    saveGame,
+    loadGame,
+    resetGame: resetGameToInitial,
+    // New game mode functions
+    setGameMode,
+    startPreAuction,
+    endPreAuction,
+    toggleConsole,
+    updatePropertyList,
+    addPropertyToList,
+    removePropertyFromList,
+    setPreAuctionProperties,
+    updateProperty,
+    // Trading functions
+    createTradeOffer,
+    acceptTradeOffer,
+    rejectTradeOffer
   };
 };
+
+// Utility: shuffle array copy
+function shuffleArray<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}

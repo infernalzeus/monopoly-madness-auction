@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Property, Player } from '@/types/game';
@@ -9,14 +9,69 @@ interface MonopolyBoardLayoutProps {
   players: Player[];
   onPropertyClick: (property: Property) => void;
   selectedProperty?: Property | null;
+  lastDiceRoll?: { total: number } | null;
 }
+
+// Animated Token Component
+const AnimatedToken: React.FC<{ 
+  player: Player; 
+  isMoving: boolean; 
+  delay?: number;
+}> = ({ player, isMoving, delay = 0 }) => {
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  useEffect(() => {
+    if (isMoving) {
+      setIsAnimating(true);
+      const timer = setTimeout(() => setIsAnimating(false), 1000 + delay);
+      return () => clearTimeout(timer);
+    }
+  }, [isMoving, delay]);
+
+  return (
+    <div
+      className={`
+        w-6 h-6 rounded-full border-2 border-white shadow-lg text-sm flex items-center justify-center font-bold
+        transition-all duration-300 ease-out
+        ${isAnimating ? 'animate-bounce scale-110' : 'scale-100'}
+      `}
+      style={{ 
+        backgroundColor: player.color,
+        boxShadow: isAnimating 
+          ? '0 0 0 3px #00000060, 0 4px 8px rgba(0,0,0,0.4), 0 0 20px rgba(0,0,0,0.3)' 
+          : '0 0 0 2px #00000040, 0 2px 4px rgba(0,0,0,0.3)',
+        animationDelay: `${delay}ms`
+      }}
+      title={player.name}
+    >
+      {player.pieceIcon}
+    </div>
+  );
+};
 
 const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
   properties,
   players,
   onPropertyClick,
-  selectedProperty
+  selectedProperty,
+  lastDiceRoll
 }) => {
+  const [playerPositions, setPlayerPositions] = useState<Record<string, number>>({});
+  const [isMoving, setIsMoving] = useState<Record<string, boolean>>({});
+
+  // Track player position changes for animation
+  useEffect(() => {
+    players.forEach(player => {
+      const previousPosition = playerPositions[player.id];
+      if (previousPosition !== undefined && previousPosition !== player.position) {
+        setIsMoving(prev => ({ ...prev, [player.id]: true }));
+        setTimeout(() => {
+          setIsMoving(prev => ({ ...prev, [player.id]: false }));
+        }, 1500);
+      }
+      setPlayerPositions(prev => ({ ...prev, [player.id]: player.position }));
+    });
+  }, [players, playerPositions]);
   // Pastel color groups inspired by Monopoly, softened for a milder look
   const colorGroups: Record<string, string> = {
     'brown': 'bg-amber-300',
@@ -47,16 +102,14 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
         {icon}
         <span className="text-xs font-semibold text-center text-slate-700 mt-1">{label}</span>
         {playersHere.length > 0 && (
-          <div className="absolute -top-1 -right-1 flex gap-1">
-            {playersHere.slice(0, 4).map((player, idx) => (
-              <div
+          <div className="absolute -top-2 -right-2 flex gap-1 flex-wrap max-w-20">
+            {playersHere.map((player, idx) => (
+              <AnimatedToken
                 key={player.id}
-                className="w-3 h-3 rounded-full border border-white text-xs flex items-center justify-center"
-                style={{ backgroundColor: player.color }}
-                title={player.name}
-              >
-                {player.pieceIcon}
-              </div>
+                player={player}
+                isMoving={isMoving[player.id] || false}
+                delay={idx * 100}
+              />
             ))}
           </div>
         )}
@@ -129,16 +182,14 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
 
           {/* Players at this position */}
           {playersHere.length > 0 && (
-            <div className="absolute -bottom-1 -right-1 flex gap-1">
-              {playersHere.slice(0, 4).map((player, idx) => (
-                <div
+            <div className="absolute -bottom-2 -right-2 flex gap-1 flex-wrap max-w-20">
+              {playersHere.map((player, idx) => (
+                <AnimatedToken
                   key={player.id}
-                  className="w-3 h-3 rounded-full border border-white text-xs flex items-center justify-center"
-                  style={{ backgroundColor: player.color }}
-                  title={player.name}
-                >
-                  {player.pieceIcon}
-                </div>
+                  player={player}
+                  isMoving={isMoving[player.id] || false}
+                  delay={idx * 100}
+                />
               ))}
             </div>
           )}

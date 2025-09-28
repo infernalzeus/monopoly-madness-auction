@@ -47,27 +47,53 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-foreground">
             <Gavel className="w-5 h-5" />
-            Auction House
+            Property Actions
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {pendingPurchase ? (
-            <div className="space-y-3">
-              <h3 className="font-semibold text-foreground">Buy Property</h3>
-              <div className="bg-background/50 rounded p-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Property</span>
-                  <span className="font-medium">{pendingPurchase.property.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Price</span>
-                  <span className="font-semibold">₹{pendingPurchase.property.currentValue.toLocaleString()}</span>
+            <div className="space-y-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-lg">
+              <div className="text-center">
+                <h3 className="text-lg font-bold text-green-800 mb-2">🏠 Property Available!</h3>
+                <div className="text-sm text-green-700">
+                  You landed on an unowned property
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Button onClick={onBuyNow} className="flex-1">Buy Now</Button>
-                <Button variant="outline" onClick={() => onStartAuction(pendingPurchase.property.id)} className="flex-1">Start Auction</Button>
-                <Button variant="ghost" onClick={onSkipPurchase} className="flex-1">Skip</Button>
+              
+              <div className="bg-white rounded-lg p-4 border border-green-200">
+                <div className="text-center mb-3">
+                  <div className="text-xl font-bold text-green-800">{pendingPurchase.property.name}</div>
+                  <div className="text-sm text-green-600">Current Market Value</div>
+                </div>
+                
+                <div className="text-center mb-4">
+                  <div className="text-3xl font-bold text-green-700">
+                    ₹{pendingPurchase.property.currentValue.toLocaleString()}
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-2">
+                  <Button 
+                    onClick={onBuyNow} 
+                    className="bg-green-600 hover:bg-green-700 text-white font-bold"
+                  >
+                    💰 Buy Now
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => onStartAuction(pendingPurchase.property.id)} 
+                    className="border-blue-400 text-blue-600 hover:bg-blue-50"
+                  >
+                    🔨 Auction
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={onSkipPurchase} 
+                    className="border-gray-400 text-gray-600 hover:bg-gray-50"
+                  >
+                    ⏭️ Skip
+                  </Button>
+                </div>
               </div>
             </div>
           ) : (
