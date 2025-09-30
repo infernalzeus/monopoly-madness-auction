@@ -108,3 +108,4 @@ const TransactionNotification: React.FC<TransactionNotificationProps> = ({
 };
 
 export default TransactionNotification;
+

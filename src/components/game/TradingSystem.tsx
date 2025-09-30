@@ -294,3 +294,4 @@ const TradingSystem: React.FC<TradingSystemProps> = ({
 };
 
 export default TradingSystem;
+

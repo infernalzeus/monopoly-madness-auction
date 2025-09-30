@@ -177,7 +177,8 @@ export const useGameLogic = () => {
     turnState: 'waiting_for_roll',
     preAuctionPhase: false,
     consoleOpen: true,
-    tradeOffers: []
+    tradeOffers: [],
+    pendingRent: null
   });
 
   const [auctionTimer, setAuctionTimer] = useState<number | null>(null);
@@ -260,17 +261,22 @@ export const useGameLogic = () => {
         if (candidate.isActive) break;
         nextIndex = (nextIndex + 1) % playerCount;
       }
+      const nextPlayer = prev.players[nextIndex];
       const nextState: GameState = {
         ...prev,
         turn: prev.turn + 1,
-        currentPlayer: prev.players[nextIndex].id,
+        currentPlayer: nextPlayer.id,
         turnState: 'waiting_for_roll',
         lastDiceRoll: null,
         pendingPurchase: null
       };
+      
+      // Add turn advancement event
+      addGameEvent('move', nextPlayer.name, `Turn ${prev.turn + 1} - ${nextPlayer.name}'s turn`);
+      
       return nextState;
     });
-  }, []);
+  }, [addGameEvent]);
 
   const endTurn = useCallback(() => {
     advanceTurn();
@@ -448,7 +454,7 @@ export const useGameLogic = () => {
         addGameEvent(
           'move', 
           currentPlayer.name, 
-          `rolled ${diceResult.total} and moved to ${property?.name || `position ${newPosition}`}${passedGo ? ' (passed GO!)' : ''}`,
+          `rolled ${diceResult.dice1} + ${diceResult.dice2} = ${diceResult.total} and moved to ${property?.name || `position ${newPosition}`}${passedGo ? ' (passed GO!)' : ''}`,
           passedGo ? gameState.settings.passGoReward : undefined
         );
 
@@ -457,16 +463,45 @@ export const useGameLogic = () => {
           if (property.name === 'Income Tax') {
             applyPayment(gameState.currentPlayer, null, 200000, 'Income Tax');
             setGameState(prev => ({ ...prev, turnState: 'completed' }));
+            // Advance turn after tax payment
+            setTimeout(() => {
+              advanceTurn();
+            }, 100);
           } else if (property.name === 'Luxury Tax') {
             applyPayment(gameState.currentPlayer, null, 100000, 'Luxury Tax');
             setGameState(prev => ({ ...prev, turnState: 'completed' }));
+            // Advance turn after tax payment
+            setTimeout(() => {
+              advanceTurn();
+            }, 100);
           } else if (property.name === 'Chance' || property.name === 'Community Chest') {
             drawCard(property.name === 'Chance' ? 'chance' : 'community');
             setGameState(prev => ({ ...prev, turnState: 'completed' }));
+            // Advance turn after drawing card
+            setTimeout(() => {
+              advanceTurn();
+            }, 100);
+          } else if (property.name === 'Go to Jail') {
+            // Advance turn after going to jail
+            setTimeout(() => {
+              advanceTurn();
+            }, 100);
           } else if ((property.type === 'property' || property.type === 'railroad' || property.type === 'utility') && property.isOwned && property.owner !== currentPlayer.name && !property.isMortgaged) {
-            // New rule: do not charge rent on landing; instead allow player to make an offer
-            addGameEvent('move', currentPlayer.name, `landed on ${property.name} owned by ${property.owner}. No rent charged; you may make an offer.`);
-            setGameState(prev => ({ ...prev, turnState: 'completed' }));
+            // Set up rent payment when landing on owned property
+            const rentAmount = computeRent(property, diceResult.total);
+            if (rentAmount > 0) {
+              setGameState(prev => ({
+                ...prev,
+                pendingRent: {
+                  propertyId: property.id,
+                  owner: property.owner as string,
+                  amount: rentAmount
+                },
+                turnState: 'waiting_for_action'
+              }));
+            } else {
+              setGameState(prev => ({ ...prev, turnState: 'completed' }));
+            }
           }
         }
       }
@@ -624,7 +659,7 @@ export const useGameLogic = () => {
       pendingPurchase: null
     }));
 
-    addGameEvent('purchase', player.name, `bought ${property.name}`, -property.currentValue);
+    addGameEvent('purchase', player.name, `bought ${property.name} for ₹${property.currentValue.toLocaleString()}`, -property.currentValue);
 
     // Advance to next player after purchase
     advanceTurn();
@@ -728,7 +763,7 @@ export const useGameLogic = () => {
       properties: prev.properties.map(p => p.id === propertyId ? { ...p, houses: p.houses + 1 } : p),
       players: prev.players.map(pl => pl.id === currentPlayer.id ? { ...pl, balance: pl.balance - cost } : pl)
     }));
-    addGameEvent('build', currentPlayer.name, `built a house on ${property.name}`, -cost);
+    addGameEvent('build', currentPlayer.name, `built a house on ${property.name} for ₹${cost.toLocaleString()}`, -cost);
   }, [gameState.properties, gameState.players, gameState.currentPlayer, canBuildHouse, addGameEvent]);
 
   const sellHouse = useCallback((propertyId: string) => {
@@ -743,7 +778,7 @@ export const useGameLogic = () => {
       properties: prev.properties.map(p => p.id === propertyId ? { ...p, houses: p.houses - 1 } : p),
       players: prev.players.map(pl => pl.id === currentPlayer.id ? { ...pl, balance: pl.balance + refund } : pl)
     }));
-    addGameEvent('build', currentPlayer.name, `sold a house on ${property.name}`, refund);
+    addGameEvent('build', currentPlayer.name, `sold a house on ${property.name} for ₹${refund.toLocaleString()}`, refund);
   }, [gameState.properties, gameState.players, gameState.currentPlayer, addGameEvent]);
 
   const buildHotel = useCallback((propertyId: string) => {
@@ -758,7 +793,7 @@ export const useGameLogic = () => {
       properties: prev.properties.map(p => p.id === propertyId ? { ...p, hasHotel: true, houses: 0 } : p),
       players: prev.players.map(pl => pl.id === currentPlayer.id ? { ...pl, balance: pl.balance - cost } : pl)
     }));
-    addGameEvent('build', currentPlayer.name, `built a hotel on ${property.name}`, -cost);
+    addGameEvent('build', currentPlayer.name, `built a hotel on ${property.name} for ₹${cost.toLocaleString()}`, -cost);
   }, [gameState.properties, gameState.players, gameState.currentPlayer, addGameEvent]);
 
   const sellHotel = useCallback((propertyId: string) => {
@@ -772,7 +807,7 @@ export const useGameLogic = () => {
       properties: prev.properties.map(p => p.id === propertyId ? { ...p, hasHotel: false, houses: 4 } : p),
       players: prev.players.map(pl => pl.id === currentPlayer.id ? { ...pl, balance: pl.balance + refund } : pl)
     }));
-    addGameEvent('build', currentPlayer.name, `sold a hotel on ${property.name}`, refund);
+    addGameEvent('build', currentPlayer.name, `sold a hotel on ${property.name} for ₹${refund.toLocaleString()}`, refund);
   }, [gameState.properties, gameState.players, gameState.currentPlayer, addGameEvent]);
 
   function movePlayerToJail(state: GameState, playerId: string): GameState {
@@ -792,21 +827,41 @@ export const useGameLogic = () => {
           ...prev,
           players: prev.players.map(pl => pl.id === prev.currentPlayer ? { ...pl, balance: pl.balance + card.value } : pl)
         }));
+        // Advance turn after card collection
+        setTimeout(() => {
+          advanceTurn();
+        }, 100);
         break;
       case 'pay':
         applyPayment(gameState.currentPlayer, null, card.value, 'Card');
+        // Advance turn after card payment
+        setTimeout(() => {
+          advanceTurn();
+        }, 100);
         break;
       case 'move':
         setGameState(prev => ({
           ...prev,
           players: prev.players.map(pl => pl.id === prev.currentPlayer ? { ...pl, position: card.value } : pl)
         }));
+        // Advance turn after card movement
+        setTimeout(() => {
+          advanceTurn();
+        }, 100);
         break;
       case 'jail':
         setGameState(prev => movePlayerToJail(prev, prev.currentPlayer));
+        // Advance turn after going to jail from card
+        setTimeout(() => {
+          advanceTurn();
+        }, 100);
         break;
       case 'outOfJail':
         setHeldOutOfJailCards(prev => ({ ...prev, [gameState.currentPlayer]: (prev[gameState.currentPlayer] || 0) + 1 }));
+        // Advance turn after getting out of jail card
+        setTimeout(() => {
+          advanceTurn();
+        }, 100);
         break;
       default:
         break;
@@ -849,7 +904,8 @@ export const useGameLogic = () => {
       turnState: 'waiting_for_roll',
       preAuctionPhase: false,
       consoleOpen: false,
-      tradeOffers: []
+      tradeOffers: [],
+      pendingRent: null
     });
   }, []);
 
@@ -1095,6 +1151,54 @@ export const useGameLogic = () => {
     }));
   }, []);
 
+  // Rent payment functions
+  const payRent = useCallback(() => {
+    if (!gameState.pendingRent) return;
+
+    const { propertyId, owner, amount } = gameState.pendingRent;
+    const property = gameState.properties.find(p => p.id === propertyId);
+    
+    if (!property) return;
+
+    applyPayment(gameState.currentPlayer, owner, amount, `Rent for ${property.name}`);
+    addGameEvent('rent', gameState.players.find(p => p.id === gameState.currentPlayer)?.name || 'Unknown', 
+      `paid ₹${amount.toLocaleString()} rent to ${owner} for ${property.name}`, -amount);
+
+    setGameState(prev => ({
+      ...prev,
+      pendingRent: null,
+      turnState: 'completed'
+    }));
+    
+    // Advance turn after rent payment
+    setTimeout(() => {
+      advanceTurn();
+    }, 100);
+  }, [gameState.pendingRent, gameState.properties, gameState.currentPlayer, gameState.players, applyPayment, addGameEvent, advanceTurn]);
+
+  const skipRent = useCallback(() => {
+    if (!gameState.pendingRent) return;
+
+    const { propertyId, owner, amount } = gameState.pendingRent;
+    const property = gameState.properties.find(p => p.id === propertyId);
+    
+    if (!property) return;
+
+    addGameEvent('rent', gameState.players.find(p => p.id === gameState.currentPlayer)?.name || 'Unknown', 
+      `skipped paying rent for ${property.name} (this should not happen in normal gameplay)`);
+
+    setGameState(prev => ({
+      ...prev,
+      pendingRent: null,
+      turnState: 'completed'
+    }));
+    
+    // Advance turn after skipping rent
+    setTimeout(() => {
+      advanceTurn();
+    }, 100);
+  }, [gameState.pendingRent, gameState.properties, gameState.currentPlayer, gameState.players, addGameEvent, advanceTurn]);
+
 
   return {
     gameState,
@@ -1134,7 +1238,10 @@ export const useGameLogic = () => {
     // Trading functions
     createTradeOffer,
     acceptTradeOffer,
-    rejectTradeOffer
+    rejectTradeOffer,
+    // Rent payment functions
+    payRent,
+    skipRent
   };
 };
 

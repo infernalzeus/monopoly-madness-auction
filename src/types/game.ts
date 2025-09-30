@@ -121,6 +121,7 @@ export interface GameState {
   preAuctionPhase: boolean;
   consoleOpen: boolean;
   tradeOffers: TradeOffer[];
+  pendingRent?: { propertyId: string; owner: string; amount: number } | null;
 }
 
 export interface TradeOffer {

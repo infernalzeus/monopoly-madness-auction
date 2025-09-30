@@ -1,15 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Property, Player } from '@/types/game';
+import { Property, Player, GameEvent, DiceRoll } from '@/types/game';
 import { Home, Building, Hotel, Landmark } from 'lucide-react';
+import CentralDisplay from './CentralDisplay';
 
 interface MonopolyBoardLayoutProps {
   properties: Property[];
   players: Player[];
   onPropertyClick: (property: Property) => void;
   selectedProperty?: Property | null;
-  lastDiceRoll?: { total: number } | null;
+  lastDiceRoll?: DiceRoll | null;
+  currentEvent?: GameEvent | null;
+  currentPlayer: string;
+  isRolling?: boolean;
+  onRollDice: () => void;
+  canRoll: boolean;
+  playerColor: string;
 }
 
 // Animated Token Component
@@ -54,7 +61,13 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
   players,
   onPropertyClick,
   selectedProperty,
-  lastDiceRoll
+  lastDiceRoll,
+  currentEvent,
+  currentPlayer,
+  isRolling = false,
+  onRollDice,
+  canRoll,
+  playerColor
 }) => {
   const [playerPositions, setPlayerPositions] = useState<Record<string, number>>({});
   const [isMoving, setIsMoving] = useState<Record<string, boolean>>({});
@@ -223,14 +236,16 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
               
               {/* Center space (game info) */}
               {rowIndex === 4 && (
-                <div className="col-span-9 row-span-1 bg-white rounded-lg border border-slate-200 p-4 flex items-center justify-center shadow-sm">
-                  <div className="text-center">
-                    <h2 className="text-2xl font-bold text-slate-800 mb-2">MONOPOLY</h2>
-                    <p className="text-sm text-slate-500">Business India Edition</p>
-                    <div className="mt-2 text-xs text-slate-700">
-                      Current Turn: {players.find(p => p.id === players[0]?.id)?.name || 'Loading...'}
-                    </div>
-                  </div>
+                <div className="col-span-9 row-span-1">
+                  <CentralDisplay
+                    currentEvent={currentEvent}
+                    currentPlayer={currentPlayer}
+                    lastDiceRoll={lastDiceRoll}
+                    isRolling={isRolling}
+                    onRollDice={onRollDice}
+                    canRoll={canRoll}
+                    playerColor={playerColor}
+                  />
                 </div>
               )}
               
