@@ -17,12 +17,14 @@ import { Property, GameMode, GameSettings, GameEvent } from '@/types/game';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Crown, Users, TrendingUp, Settings, Gavel } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 
 const MonopolyGame: React.FC = () => {
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
@@ -31,6 +33,7 @@ const MonopolyGame: React.FC = () => {
   const [lobbyCode, setLobbyCode] = useState('');
   const [showPreAuctionDialog, setShowPreAuctionDialog] = useState(false);
   const [currentDisplayEvent, setCurrentDisplayEvent] = useState<GameEvent | null>(null);
+  const [isLogOpen, setIsLogOpen] = useState(false);
   
   // Local setup state mirrors a subset of settings for initial configuration
   const [setupAuctionsEnabled, setSetupAuctionsEnabled] = useState(false);
@@ -518,6 +521,63 @@ const MonopolyGame: React.FC = () => {
                 canTeam={gameState.settings.teamsEnabled}
               />
 
+          {/* Players Summary Table - Dark theme */}
+          <Card className="bg-black border border-slate-800 shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-white">Players Overview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-slate-800">
+                      <TableHead className="w-12 text-slate-300">#</TableHead>
+                      <TableHead className="text-slate-300">Player</TableHead>
+                      <TableHead className="text-slate-300">Cash</TableHead>
+                      <TableHead className="text-slate-300">Properties</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {gameState.players.map((p, idx) => {
+                      const propsOwned = gameState.properties.filter(prop => prop.owner === p.name);
+                      return (
+                        <TableRow key={p.id} className="border-slate-800">
+                          <TableCell className="text-slate-200">{idx + 1}</TableCell>
+                          <TableCell className="text-slate-100">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg" style={{ color: p.color }}>{p.pieceIcon}</span>
+                              <span className="font-medium">{p.name}</span>
+                              {gameState.currentPlayer === p.id && (
+                                <Badge className="ml-2 bg-sky-500/20 text-sky-300">Current</Badge>
+                              )}
+                              {p.isInJail && (
+                                <Badge variant="destructive" className="ml-2">Jail ({p.jailTurns})</Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-emerald-300">₹{p.balance.toLocaleString()}</TableCell>
+                          <TableCell className="text-slate-200">
+                            {propsOwned.length === 0 ? (
+                              <span className="text-slate-500">—</span>
+                            ) : (
+                              <div className="flex flex-wrap gap-1">
+                                {propsOwned.map(op => (
+                                  <Badge key={op.id} variant="secondary" className="text-xs bg-slate-700 text-slate-100">
+                                    {op.name}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+
               {/* Trading System */}
               {gameState.settings.tradingEnabled && (
                 <TradingSystem
@@ -532,8 +592,10 @@ const MonopolyGame: React.FC = () => {
                 />
               )}
 
-              {/* Game Log */}
-              <GameLog events={gameState.gameEvents} />
+          {/* Game Log Drawer Trigger */}
+          <div className="fixed bottom-4 right-4 z-50">
+            <Button onClick={() => setIsLogOpen(true)} className="bg-slate-800 text-white hover:bg-slate-700">Open Log</Button>
+          </div>
             </>
           )}
 
@@ -572,6 +634,17 @@ const MonopolyGame: React.FC = () => {
           </Dialog>
         </div>
       </div>
+      {/* Bottom Drawer: Game Log */}
+      <Drawer open={isLogOpen} onOpenChange={setIsLogOpen}>
+        <DrawerContent className="max-h-[60vh]">
+          <DrawerHeader>
+            <DrawerTitle>Game Log</DrawerTitle>
+          </DrawerHeader>
+          <div className="p-4 overflow-y-auto">
+            <GameLog events={gameState.gameEvents} />
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 };

@@ -406,6 +406,27 @@ export const useGameLogic = () => {
         return;
       }
 
+      // If player is in jail: decrement jailTurns and skip rolling until released
+      if (currentPlayerData.isInJail) {
+        setGameState(prev => {
+          const players = prev.players.map(p => {
+            if (p.id !== prev.currentPlayer) return p;
+            const remaining = Math.max(0, (p.jailTurns || 0) - 1);
+            return { ...p, jailTurns: remaining, isInJail: remaining > 0 };
+          });
+          return { ...prev, players, turnState: 'completed' };
+        });
+        const cp = gameState.players.find(p => p.id === gameState.currentPlayer);
+        if (cp) {
+          addGameEvent('move', cp.name, 'turn skipped while in Jail');
+        }
+        setIsRolling(false);
+        setTimeout(() => {
+          advanceTurn();
+        }, 100);
+        return;
+      }
+
       setGameState(prev => {
         const newPlayers = prev.players.map(player => {
           if (player.id === prev.currentPlayer) {
@@ -501,7 +522,17 @@ export const useGameLogic = () => {
               }));
             } else {
               setGameState(prev => ({ ...prev, turnState: 'completed' }));
+              // Advance turn when no rent due
+              setTimeout(() => {
+                advanceTurn();
+              }, 100);
             }
+          } else if (property.type === 'special') {
+            // For special tiles that don't require actions (GO, Jail visit, Free Parking), just advance turn
+            setGameState(prev => ({ ...prev, turnState: 'completed' }));
+            setTimeout(() => {
+              advanceTurn();
+            }, 100);
           }
         }
       }
