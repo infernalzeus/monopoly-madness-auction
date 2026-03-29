@@ -6,11 +6,12 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { 
-  Users, 
-  Plus, 
-  Hash, 
-  Settings, 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Users,
+  Plus,
+  Hash,
+  Settings,
   Crown,
   Gamepad2,
   Gavel,
@@ -20,13 +21,15 @@ import {
 import { Lobby, GameSettings } from '@/types/game';
 
 interface LobbySystemProps {
-  onCreateLobby: (settings: GameSettings) => void;
-  onJoinLobby: (code: string) => void;
+  onCreateLobby: (settings: GameSettings, code: string, playerName: string) => void;
+  onJoinLobby: (code: string, playerName: string) => void;
 }
 
 const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby }) => {
   const [showCreateLobby, setShowCreateLobby] = useState(false);
   const [joinCode, setJoinCode] = useState('');
+  const [playerName, setPlayerName] = useState('');
+  const [generatedCode] = useState(() => Math.floor(100000 + Math.random() * 900000).toString());
   const [lobbySettings, setLobbySettings] = useState<GameSettings>({
     gameMode: 'classic',
     auctionsEnabled: false,
@@ -43,17 +46,15 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
     customPropertyLists: {}
   });
 
-  const generateLobbyCode = (): string => {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  };
-
   const handleCreateLobby = () => {
-    onCreateLobby(lobbySettings);
+    if (!playerName.trim()) { alert('Please enter your name to create a lobby.'); return; }
+    onCreateLobby(lobbySettings, generatedCode, playerName.substring(0, 16));
   };
 
   const handleJoinLobby = () => {
+    if (!playerName.trim()) { alert('Please enter your name to join the lobby.'); return; }
     if (joinCode.length === 6) {
-      onJoinLobby(joinCode);
+      onJoinLobby(joinCode, playerName.substring(0, 16));
     }
   };
 
@@ -86,14 +87,28 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
             <CardContent className="space-y-6">
               <div className="text-center">
                 <Badge className="text-lg px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white">
-                  Lobby Code: {generateLobbyCode()}
+                  Lobby Code: {generatedCode}
                 </Badge>
                 <p className="text-sm text-slate-400 mt-2">
                   Share this code with friends to join
                 </p>
               </div>
 
-              <Button 
+              <div className="space-y-4">
+                <Label htmlFor="createPlayerName" className="text-cyan-200 font-semibold">
+                  Your Name
+                </Label>
+                <Input
+                  id="createPlayerName"
+                  placeholder="Enter your name (max 16 chars)"
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value.slice(0, 16))}
+                  className="bg-slate-700 border-cyan-400/50 text-cyan-100 focus:border-cyan-400"
+                  maxLength={16}
+                />
+              </div>
+
+              <Button
                 onClick={() => setShowCreateLobby(true)}
                 className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-bold py-3 text-lg"
               >
@@ -131,19 +146,30 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                   {Array.from({ length: 6 }, (_, i) => (
                     <div
                       key={i}
-                      className={`w-8 h-8 border-2 rounded flex items-center justify-center text-lg font-bold ${
-                        i < joinCode.length
+                      className={`w-8 h-8 border-2 rounded flex items-center justify-center text-lg font-bold ${i < joinCode.length
                           ? 'border-green-400 bg-green-400/20 text-green-300'
                           : 'border-slate-600 text-slate-500'
-                      }`}
+                        }`}
                     >
                       {joinCode[i] || ''}
                     </div>
                   ))}
                 </div>
+
+                <div className="pt-2">
+                  <Label htmlFor="joinPlayerName" className="text-green-200 font-semibold mb-2 block">Your Name</Label>
+                  <Input
+                    id="joinPlayerName"
+                    placeholder="Enter your name (max 16 chars)"
+                    value={playerName}
+                    onChange={(e) => setPlayerName(e.target.value.slice(0, 16))}
+                    className="bg-slate-700 border-green-400/50 text-green-100 focus:border-green-400"
+                    maxLength={16}
+                  />
+                </div>
               </div>
 
-              <Button 
+              <Button
                 onClick={handleJoinLobby}
                 disabled={joinCode.length !== 6}
                 className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold py-3 text-lg disabled:opacity-50"
@@ -164,12 +190,12 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                 Lobby Settings
               </DialogTitle>
             </DialogHeader>
-            
+
             <div className="space-y-6">
               {/* Game Options */}
               <div className="space-y-4">
                 <h3 className="text-lg font-bold text-cyan-300">Game Options</h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg border border-cyan-400/30">
                     <div className="flex items-center gap-3">
@@ -179,9 +205,9 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                         <p className="text-xs text-slate-400">Auction properties at game start</p>
                       </div>
                     </div>
-                    <Switch 
+                    <Switch
                       checked={lobbySettings.auctionsEnabled}
-                      onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) =>
                         setLobbySettings(prev => ({ ...prev, auctionsEnabled: checked }))
                       }
                     />
@@ -195,9 +221,9 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                         <p className="text-xs text-slate-400">Customize property names & rents</p>
                       </div>
                     </div>
-                    <Switch 
+                    <Switch
                       checked={lobbySettings.allowPropertyEditing}
-                      onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) =>
                         setLobbySettings(prev => ({ ...prev, allowPropertyEditing: checked }))
                       }
                     />
@@ -211,9 +237,9 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                         <p className="text-xs text-slate-400">Allow property trading</p>
                       </div>
                     </div>
-                    <Switch 
+                    <Switch
                       checked={lobbySettings.tradingEnabled}
-                      onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) =>
                         setLobbySettings(prev => ({ ...prev, tradingEnabled: checked }))
                       }
                     />
@@ -227,9 +253,9 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                         <p className="text-xs text-slate-400">Enable team play</p>
                       </div>
                     </div>
-                    <Switch 
+                    <Switch
                       checked={lobbySettings.teamsEnabled}
-                      onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) =>
                         setLobbySettings(prev => ({ ...prev, teamsEnabled: checked }))
                       }
                     />
@@ -248,10 +274,10 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                       min="2"
                       max="8"
                       value={lobbySettings.maxPlayers}
-                      onChange={(e) => 
-                        setLobbySettings(prev => ({ 
-                          ...prev, 
-                          maxPlayers: parseInt(e.target.value) || 4 
+                      onChange={(e) =>
+                        setLobbySettings(prev => ({
+                          ...prev,
+                          maxPlayers: parseInt(e.target.value) || 4
                         }))
                       }
                       className="bg-slate-700 border-cyan-400/50 text-cyan-100"
@@ -262,10 +288,10 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                     <Input
                       type="number"
                       value={lobbySettings.startingBalance}
-                      onChange={(e) => 
-                        setLobbySettings(prev => ({ 
-                          ...prev, 
-                          startingBalance: parseInt(e.target.value) || 1500000 
+                      onChange={(e) =>
+                        setLobbySettings(prev => ({
+                          ...prev,
+                          startingBalance: parseInt(e.target.value) || 1500000
                         }))
                       }
                       className="bg-slate-700 border-cyan-400/50 text-cyan-100"
@@ -276,14 +302,14 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
 
               {/* Action Buttons */}
               <div className="flex gap-4 pt-4">
-                <Button 
+                <Button
                   onClick={() => setShowCreateLobby(false)}
                   variant="outline"
                   className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700"
                 >
                   Cancel
                 </Button>
-                <Button 
+                <Button
                   onClick={handleCreateLobby}
                   className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-bold"
                 >

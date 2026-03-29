@@ -1,4 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
+import { db } from '../lib/firebase';
+import { doc, onSnapshot, runTransaction, setDoc, getDoc } from 'firebase/firestore';
+import { rollDiceLogic, movePlayer, handlePropertyPurchase, advanceTurn as advanceTurnLogic, checkWinCondition, computeRent as computeRentLogic } from '../gameEngine/core';
 import { 
   GameState, 
   Property, 
@@ -123,13 +126,13 @@ const generateInitialProperties = (): Property[] => {
     id: `prop-${index}`,
     name: prop.name,
     type: prop.type as 'property' | 'railroad' | 'utility' | 'special',
-    colorGroup: prop.colorGroup,
+    colorGroup: prop.colorGroup || null,
     baseValue: prop.type === 'property' ? prop.rent[0] * 10 : prop.type === 'railroad' ? 200000 : prop.type === 'utility' ? 150000 : 0,
     currentValue: prop.type === 'property' ? prop.rent[0] * 10 : prop.type === 'railroad' ? 200000 : prop.type === 'utility' ? 150000 : 0,
     rent: prop.rent,
     mortgageValue: prop.type === 'property' ? prop.rent[0] * 5 : prop.type === 'railroad' ? 100000 : prop.type === 'utility' ? 75000 : 0,
-    houseCost: prop.type === 'property' ? prop.rent[0] * 5 : undefined,
-    hotelCost: prop.type === 'property' ? prop.rent[0] * 5 : undefined,
+    houseCost: prop.type === 'property' ? prop.rent[0] * 5 : null,
+    hotelCost: prop.type === 'property' ? prop.rent[0] * 5 : null,
     houses: 0,
     hasHotel: false,
     isOwned: false,
@@ -159,8 +162,7 @@ const generateInitialPlayers = (): Player[] => {
   }));
 };
 
-export const useGameLogic = () => {
-  const [gameState, setGameState] = useState<GameState>({
+export const getInitialState = (): GameState => ({
     properties: generateInitialProperties(),
     players: generateInitialPlayers(),
     teams: [],
@@ -180,6 +182,61 @@ export const useGameLogic = () => {
     tradeOffers: [],
     pendingRent: null
   });
+
+export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
+    const [gameStateInternal, setGameStateInternal] = useState<GameState | null>(null);
+
+  useEffect(() => {
+    if (!roomId) return;
+    const roomRef = doc(db, 'games', roomId);
+    let isMounted = true;
+    
+    // Create room if it doesn't exist
+    getDoc(roomRef).then(snap => {
+      if (!snap.exists()) {
+        const initialStateToUse = gameStateInternal || getInitialState();
+        setDoc(roomRef, { gameState: initialStateToUse, status: 'waiting' });
+      }
+    });
+
+    const unsubscribe = onSnapshot(roomRef, (snap) => {
+      if (snap.exists() && isMounted) {
+        setGameStateInternal(snap.data().gameState);
+      }
+    });
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, [roomId]);
+
+  const setGameState = useCallback((updater: any) => {
+    if (!roomId) {
+      setGameStateInternal(prev => {
+        const currentState = prev || getInitialState();
+        return typeof updater === 'function' ? updater(currentState) : updater;
+      });
+      return;
+    }
+    const roomRef = doc(db, 'games', roomId);
+    runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(roomRef);
+      if (!snap.exists()) {
+        // Just created, doc not ready, write it here manually:
+        const currentState = gameStateInternal || getInitialState();
+        let nextState = typeof updater === 'function' ? updater(currentState) : updater;
+        transaction.set(roomRef, { gameState: nextState, status: 'waiting' });
+        return;
+      }
+      const currentState = snap.data().gameState;
+      let nextState = typeof updater === 'function' ? updater(currentState) : updater;
+      transaction.update(roomRef, { gameState: nextState });
+    }).catch(console.error);
+  }, [roomId, gameStateInternal]);
+  
+  // Provide a fallback initial state for immediate render
+  const gameState = gameStateInternal || getInitialState();
+  
 
   const [auctionTimer, setAuctionTimer] = useState<number | null>(null);
   const [isRolling, setIsRolling] = useState(false);
@@ -225,20 +282,22 @@ export const useGameLogic = () => {
 
   // Helper function to add game events
   const addGameEvent = useCallback((type: GameEvent['type'], player: string, message: string, amount?: number) => {
-    const event: GameEvent = {
+    const event: any = {
       id: `event-${Date.now()}`,
       type,
       player,
       message,
-      timestamp: Date.now(),
-      amount
+      timestamp: Date.now()
     };
+    if (amount !== undefined) {
+      event.amount = amount;
+    }
     
     setGameState(prev => ({
       ...prev,
-      gameEvents: [...prev.gameEvents.slice(-19), event] // Keep last 20 events
+      gameEvents: [...prev.gameEvents.slice(-19), event as GameEvent] // Keep last 20 events
     }));
-  }, []);
+  }, [setGameState]);
 
   // Dice rolling function
   const rollDice = useCallback((): DiceRoll => {
@@ -251,32 +310,8 @@ export const useGameLogic = () => {
   }, []);
 
   const advanceTurn = useCallback(() => {
-    setGameState(prev => {
-      const playerCount = prev.players.length;
-      const currentIndex = prev.players.findIndex(p => p.id === prev.currentPlayer);
-      let nextIndex = (currentIndex + 1) % playerCount;
-      // Skip inactive players
-      for (let i = 0; i < playerCount; i++) {
-        const candidate = prev.players[nextIndex];
-        if (candidate.isActive) break;
-        nextIndex = (nextIndex + 1) % playerCount;
-      }
-      const nextPlayer = prev.players[nextIndex];
-      const nextState: GameState = {
-        ...prev,
-        turn: prev.turn + 1,
-        currentPlayer: nextPlayer.id,
-        turnState: 'waiting_for_roll',
-        lastDiceRoll: null,
-        pendingPurchase: null
-      };
-      
-      // Add turn advancement event
-      addGameEvent('move', nextPlayer.name, `Turn ${prev.turn + 1} - ${nextPlayer.name}'s turn`);
-      
-      return nextState;
-    });
-  }, [addGameEvent]);
+    setGameState((prev: GameState) => advanceTurnLogic(prev));
+  }, [setGameState]);
 
   const endTurn = useCallback(() => {
     advanceTurn();
@@ -341,7 +376,7 @@ export const useGameLogic = () => {
             if (creditorName) {
               return { ...prop, owner: creditorName };
             }
-            return { ...prop, owner: undefined, isOwned: false, isMortgaged: false, houses: 0, hasHotel: false };
+            return { ...prop, owner: null, isOwned: false, isMortgaged: false, houses: 0, hasHotel: false };
           }
           return prop;
         });
@@ -391,155 +426,12 @@ export const useGameLogic = () => {
 
   // Handle dice roll and player movement
   const handleDiceRoll = useCallback(() => {
-    if (isRolling || gameState.turnState !== 'waiting_for_roll') return;
-    
     setIsRolling(true);
-    setGameState(prev => ({ ...prev, turnState: 'processing' }));
-    
     setTimeout(() => {
-      const diceResult = rollDice();
-      const currentPlayerData = gameState.players.find(p => p.id === gameState.currentPlayer);
-      
-      if (!currentPlayerData) {
-        setIsRolling(false);
-        setGameState(prev => ({ ...prev, turnState: 'waiting_for_roll' }));
-        return;
-      }
-
-      // If player is in jail: decrement jailTurns and skip rolling until released
-      if (currentPlayerData.isInJail) {
-        setGameState(prev => {
-          const players = prev.players.map(p => {
-            if (p.id !== prev.currentPlayer) return p;
-            const remaining = Math.max(0, (p.jailTurns || 0) - 1);
-            return { ...p, jailTurns: remaining, isInJail: remaining > 0 };
-          });
-          return { ...prev, players, turnState: 'completed' };
-        });
-        const cp = gameState.players.find(p => p.id === gameState.currentPlayer);
-        if (cp) {
-          addGameEvent('move', cp.name, 'turn skipped while in Jail');
-        }
-        setIsRolling(false);
-        setTimeout(() => {
-          advanceTurn();
-        }, 100);
-        return;
-      }
-
-      setGameState(prev => {
-        const newPlayers = prev.players.map(player => {
-          if (player.id === prev.currentPlayer) {
-            const newPosition = (player.position + diceResult.total) % 40;
-            const passedGo = player.position + diceResult.total >= 40;
-            
-            return {
-              ...player,
-              position: newPosition,
-              balance: passedGo ? player.balance + prev.settings.passGoReward : player.balance
-            };
-          }
-          return player;
-        });
-
-        const movingPlayer = newPlayers.find(p => p.id === prev.currentPlayer)!;
-        const landedProperty = prev.properties.find(p => p.position === movingPlayer.position);
-        const isBuyable = landedProperty && (landedProperty.type === 'property' || landedProperty.type === 'railroad' || landedProperty.type === 'utility');
-        const shouldOfferPurchase = Boolean(isBuyable && landedProperty && !landedProperty.isOwned);
-        
-        let nextState: GameState = {
-          ...prev,
-          players: newPlayers,
-          lastDiceRoll: diceResult,
-          doubleCount: 0,
-          turnState: shouldOfferPurchase ? 'waiting_for_action' : 'completed',
-          pendingPurchase: shouldOfferPurchase ? { propertyId: landedProperty!.id, playerId: prev.currentPlayer } : null
-        };
-
-        // Handle special tiles
-        if (landedProperty && landedProperty.name === 'Go to Jail') {
-          nextState = movePlayerToJail(nextState, prev.currentPlayer);
-          nextState.turnState = 'completed';
-        }
-
-        return nextState;
-      });
-
-      // Add event for the move
-      const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayer);
-      if (currentPlayer) {
-        const newPosition = (currentPlayer.position + diceResult.total) % 40;
-        const passedGo = currentPlayer.position + diceResult.total >= 40;
-        const property = gameState.properties.find(p => p.position === newPosition);
-        
-        addGameEvent(
-          'move', 
-          currentPlayer.name, 
-          `rolled ${diceResult.dice1} + ${diceResult.dice2} = ${diceResult.total} and moved to ${property?.name || `position ${newPosition}`}${passedGo ? ' (passed GO!)' : ''}`,
-          passedGo ? gameState.settings.passGoReward : undefined
-        );
-
-        // Resolve tile effects
-        if (property) {
-          if (property.name === 'Income Tax') {
-            applyPayment(gameState.currentPlayer, null, 200000, 'Income Tax');
-            setGameState(prev => ({ ...prev, turnState: 'completed' }));
-            // Advance turn after tax payment
-            setTimeout(() => {
-              advanceTurn();
-            }, 100);
-          } else if (property.name === 'Luxury Tax') {
-            applyPayment(gameState.currentPlayer, null, 100000, 'Luxury Tax');
-            setGameState(prev => ({ ...prev, turnState: 'completed' }));
-            // Advance turn after tax payment
-            setTimeout(() => {
-              advanceTurn();
-            }, 100);
-          } else if (property.name === 'Chance' || property.name === 'Community Chest') {
-            drawCard(property.name === 'Chance' ? 'chance' : 'community');
-            setGameState(prev => ({ ...prev, turnState: 'completed' }));
-            // Advance turn after drawing card
-            setTimeout(() => {
-              advanceTurn();
-            }, 100);
-          } else if (property.name === 'Go to Jail') {
-            // Advance turn after going to jail
-            setTimeout(() => {
-              advanceTurn();
-            }, 100);
-          } else if ((property.type === 'property' || property.type === 'railroad' || property.type === 'utility') && property.isOwned && property.owner !== currentPlayer.name && !property.isMortgaged) {
-            // Set up rent payment when landing on owned property
-            const rentAmount = computeRent(property, diceResult.total);
-            if (rentAmount > 0) {
-              setGameState(prev => ({
-                ...prev,
-                pendingRent: {
-                  propertyId: property.id,
-                  owner: property.owner as string,
-                  amount: rentAmount
-                },
-                turnState: 'waiting_for_action'
-              }));
-            } else {
-              setGameState(prev => ({ ...prev, turnState: 'completed' }));
-              // Advance turn when no rent due
-              setTimeout(() => {
-                advanceTurn();
-              }, 100);
-            }
-          } else if (property.type === 'special') {
-            // For special tiles that don't require actions (GO, Jail visit, Free Parking), just advance turn
-            setGameState(prev => ({ ...prev, turnState: 'completed' }));
-            setTimeout(() => {
-              advanceTurn();
-            }, 100);
-          }
-        }
-      }
-
+      setGameState((prev: GameState) => rollDiceLogic(prev, rollDice()));
       setIsRolling(false);
-    }, 1000);
-  }, [gameState.players, gameState.currentPlayer, gameState.properties, gameState.settings, rollDice, addGameEvent, isRolling, advanceTurn, computeRent, applyPayment, gameState.turnState]);
+    }, 800);
+  }, [setGameState, rollDice]);
 
   
 
@@ -668,33 +560,12 @@ export const useGameLogic = () => {
   }, [gameState.currentAuction]);
 
   const purchaseProperty = useCallback((propertyId: string) => {
-    const pending = gameState.pendingPurchase;
-    if (!pending || pending.propertyId !== propertyId) return;
-
-    const property = gameState.properties.find(p => p.id === propertyId);
-    const player = gameState.players.find(p => p.id === pending.playerId);
-    if (!property || !player) return;
-    if (property.isOwned) return;
-    if (player.balance < property.currentValue) return;
-
-    setGameState(prev => ({
-      ...prev,
-      properties: prev.properties.map(p =>
-        p.id === propertyId ? { ...p, isOwned: true, owner: player.name, isInAuction: false } : p
-      ),
-      players: prev.players.map(pl =>
-        pl.id === pending.playerId
-          ? { ...pl, balance: pl.balance - property.currentValue, properties: [...pl.properties, propertyId] }
-          : pl
-      ),
-      pendingPurchase: null
-    }));
-
-    addGameEvent('purchase', player.name, `bought ${property.name} for ₹${property.currentValue.toLocaleString()}`, -property.currentValue);
-
-    // Advance to next player after purchase
-    advanceTurn();
-  }, [gameState.pendingPurchase, gameState.properties, gameState.players, addGameEvent, advanceTurn]);
+    setGameState((prev: GameState) => {
+      let next = handlePropertyPurchase(prev, propertyId, prev.currentPlayer);
+      if (next !== prev) return advanceTurnLogic(next);
+      return next;
+    });
+  }, [setGameState]);
 
   const skipPurchase = useCallback(() => {
     const pending = gameState.pendingPurchase;

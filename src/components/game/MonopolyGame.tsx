@@ -12,8 +12,10 @@ import TransactionNotification from './TransactionNotification';
 import TradingSystem from './TradingSystem';
 import RentPaymentDialog from './RentPaymentDialog';
 import GameLog from './GameLog';
-import { useGameLogic } from '@/hooks/useGameLogic';
-import { Property, GameMode, GameSettings, GameEvent } from '@/types/game';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { useGameLogic, getInitialState } from '@/hooks/useGameLogic';
+import { Property, GameMode, GameSettings, GameEvent, GameState, Player } from '@/types/game';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Crown, Users, TrendingUp, Settings, Gavel } from 'lucide-react';
@@ -34,6 +36,7 @@ const MonopolyGame: React.FC = () => {
   const [showPreAuctionDialog, setShowPreAuctionDialog] = useState(false);
   const [currentDisplayEvent, setCurrentDisplayEvent] = useState<GameEvent | null>(null);
   const [isLogOpen, setIsLogOpen] = useState(false);
+  const [localPlayerId, setLocalPlayerId] = useState<string>('');
   
   // Local setup state mirrors a subset of settings for initial configuration
   const [setupAuctionsEnabled, setSetupAuctionsEnabled] = useState(false);
@@ -80,12 +83,25 @@ const MonopolyGame: React.FC = () => {
     rejectTradeOffer,
     payRent,
     skipRent
-  } = useGameLogic();
+  } = useGameLogic(!showLobby ? lobbyCode : undefined, localPlayerId);
 
   const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayer);
-  const ownedProperties = gameState.properties.filter(p => 
-    p.owner === currentPlayer?.name
-  );
+  const myPlayer = gameState.players.find(p => p.id === localPlayerId) || currentPlayer;
+
+  if (!currentPlayer || !myPlayer) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+        <div className="text-xl font-bold flex flex-col items-center text-slate-700">
+          <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mb-4"></div>
+          Loading Game State...
+        </div>
+      </div>
+    );
+  }
+
+  const isMyTurn = gameState.currentPlayer === localPlayerId;
+  const myOwnedProperties = gameState.properties.filter(p => p.owner === myPlayer.name);
+  const ownedProperties = gameState.properties.filter(p => p.owner === currentPlayer.name);
 
   // Manage current display event with 1-second timer
   useEffect(() => {
@@ -112,11 +128,12 @@ const MonopolyGame: React.FC = () => {
 
   // Pending purchase UI data
   const pendingPurchaseData = gameState.pendingPurchase ? {
-    property: gameState.properties.find(p => p.id === gameState.pendingPurchase!.propertyId)!
+    property: gameState.properties.find(p => p.id === gameState.pendingPurchase!.propertyId)!,
+    isMine: gameState.pendingPurchase.playerId === localPlayerId
   } : null;
 
   // Pending rent UI data
-  const pendingRentData = gameState.pendingRent ? {
+  const myPendingRentData = gameState.pendingRent && gameState.currentPlayer === localPlayerId ? {
     property: gameState.properties.find(p => p.id === gameState.pendingRent!.propertyId)!,
     owner: gameState.pendingRent.owner,
     amount: gameState.pendingRent.amount
@@ -149,37 +166,106 @@ const MonopolyGame: React.FC = () => {
     console.log('Game ended');
   };
 
-  const handleCreateLobby = (settings: GameSettings) => {
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    setLobbyCode(code);
-    setIsLobbyOwner(true);
-    setShowLobby(false);
-    
-    // Update game settings and start the game
-    updateSettings({
-      ...settings,
-      gameMode: settings.auctionsEnabled ? 'auction' : 'classic'
-    });
-    
-    // Set game phase to playing
-    setGameMode(settings.auctionsEnabled ? 'auction' : 'classic');
-    
-    // If auctions are enabled, show pre-auction dialog
-    if (settings.auctionsEnabled) {
-      setShowPreAuctionDialog(true);
-    } else {
-      // For classic mode, start the game immediately
-      setTimeout(() => {
-        setGameMode('classic');
-      }, 100);
+  const handleCreateLobby = async (settings: GameSettings, code: string, playerName: string) => {
+    try {
+      const roomRef = doc(db, 'games', code);
+      const initialState = getInitialState();
+      const hostPlayer: Player = {
+        id: 'player-1',
+        name: playerName || 'Host',
+        balance: settings.startingBalance || 1500000,
+        properties: [],
+        position: 0,
+        color: '#DC2626',
+        isActive: true,
+        isInJail: false,
+        jailTurns: 0,
+        pieceIcon: '🔴'
+      };
+      
+      const firstState: GameState = { 
+         ...initialState, 
+         players: [hostPlayer],
+         settings: {
+           ...initialState.settings,
+           ...settings,
+           gameMode: settings.auctionsEnabled ? 'auction' : 'classic'
+         }
+      };
+      
+      await setDoc(roomRef, { gameState: firstState, status: 'waiting' });
+      
+      setLobbyCode(code);
+      setLocalPlayerId('player-1');
+      setIsLobbyOwner(true);
+      setShowLobby(false);
+      
+      // Auto-start and pre-auction logic is handled automatically when maxPlayers is reached during joining.
+    } catch (e: any) {
+      console.error("Firebase Room Creation Error:", e);
+      alert("Failed to create the room! Please verify your Firebase Security Rules say 'allow read, write: if true;'. Error: " + e.message);
     }
   };
 
-  const handleJoinLobby = (code: string) => {
-    setLobbyCode(code);
-    setIsLobbyOwner(false);
-    setShowLobby(false);
-    // In a real implementation, this would connect to the lobby
+  const handleJoinLobby = async (code: string, playerName: string) => {
+    try {
+      const roomRef = doc(db, 'games', code);
+      const snap = await getDoc(roomRef);
+      if (snap.exists()) {
+        const data = snap.data();
+        const state = data.gameState as GameState;
+        
+        let joinedPlayerId = '';
+        const existingPlayer = state.players.find(p => p.name === playerName);
+        if (existingPlayer) {
+          joinedPlayerId = existingPlayer.id;
+        } else {
+          if (state.players.length >= state.settings.maxPlayers) {
+            alert('Lobby is currently full!');
+            return;
+          }
+          
+          joinedPlayerId = `player-${state.players.length + 1}`;
+          const colors = ['#DC2626', '#2563EB', '#16A34A', '#EAB308', '#9333EA', '#F97316', '#14B8A6', '#F43F5E'];
+          const icons = ['🔴', '🔵', '🟢', '🟡', '🟣', '🟠', '💠', '💖'];
+          const newPlayer: Player = {
+            id: joinedPlayerId,
+            name: playerName || `Player ${state.players.length + 1}`,
+            balance: state.settings.startingBalance || 1500000,
+            properties: [],
+            position: 0,
+            color: colors[state.players.length] || '#000',
+            isActive: true,
+            isInJail: false,
+            jailTurns: 0,
+            pieceIcon: icons[state.players.length] || '👤'
+          };
+          
+          state.players.push(newPlayer);
+          
+          // Check auto-start
+          if (state.players.length === state.settings.maxPlayers) {
+            if (state.settings.auctionsEnabled) {
+              state.preAuctionPhase = true;
+              state.gamePhase = 'auction';
+            } else {
+              state.gamePhase = 'playing';
+            }
+          }
+          await setDoc(roomRef, { ...data, gameState: state });
+        }
+        
+        setLobbyCode(code);
+        setLocalPlayerId(joinedPlayerId);
+        setIsLobbyOwner(false);
+        setShowLobby(false);
+      } else {
+        alert("Room not found! Please check the code and try again.");
+      }
+    } catch (error) {
+      console.error("Error joining room:", error);
+      alert("Error joining room. Check console for details.");
+    }
   };
 
   const handleStartGame = () => {
@@ -222,48 +308,71 @@ const MonopolyGame: React.FC = () => {
     return <LobbySystem onCreateLobby={handleCreateLobby} onJoinLobby={handleJoinLobby} />;
   }
 
-  if (!currentPlayer) {
+  if (gameState.gamePhase === 'setup') {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-foreground mb-4">Loading Game...</h1>
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
+        <div className="text-center text-white bg-slate-900/50 p-8 rounded-xl border border-cyan-400/30">
+          <h1 className="text-4xl font-bold mb-4">Waiting for players to join...</h1>
+          <p className="text-2xl mb-8 font-mono bg-black/40 py-2 px-4 rounded-lg inline-block text-green-400">
+            Lobby Code: {lobbyCode}
+          </p>
+          <p className="text-xl mb-4 text-cyan-200">
+            Players Joined: {gameState.players.length} / {gameState.settings.maxPlayers}
+          </p>
+          <div className="mt-8 flex justify-center gap-4 flex-wrap max-w-2xl mx-auto">
+            {gameState.players.map(p => (
+              <Badge key={p.id} style={{backgroundColor: p.color}} className="text-xl py-3 px-6 shadow-lg text-white border-2 border-white/20">
+                <span className="mr-2 text-2xl" dangerouslySetInnerHTML={{__html: p.pieceIcon}} /> {p.name}
+              </Badge>
+            ))}
+          </div>
+          <p className="mt-12 text-slate-400 italic">
+            The game will start automatically when the lobby limit is reached.
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white p-4">
+    <div className="min-h-screen bg-slate-950 p-4 text-slate-100">
       {/* Transaction Notifications */}
       <TransactionNotification 
         events={gameState.gameEvents}
         onDismiss={handleDismissEvent}
       />
 
-      {/* Rent Payment Dialog */}
-      {pendingRentData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="max-w-md w-full mx-4">
+      {/* Dialogs */}
+      {myPendingRentData && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 rounded-xl shadow-2xl max-w-md w-full border border-slate-700">
             <RentPaymentDialog
-              property={pendingRentData.property}
-              owner={pendingRentData.owner}
-              amount={pendingRentData.amount}
+              property={myPendingRentData.property}
+              amount={myPendingRentData.amount}
+              owner={myPendingRentData.owner}
               onPayRent={payRent}
               onSkipRent={skipRent}
-              currentPlayerBalance={currentPlayer?.balance || 0}
+              currentPlayerBalance={myPlayer.balance || 0}
             />
           </div>
         </div>
       )}
       
       {/* Game Header */}
-      <Card className="mb-6 bg-white border border-slate-200 shadow-sm">
+      <Card className="mb-6 bg-slate-900 border border-slate-800 shadow-md">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between text-slate-800">
-            <div className="flex items-center gap-3">
+          <CardTitle className="flex items-center justify-between text-slate-100">
+            <div className="flex flex-wrap items-center gap-3">
               <Crown className="w-6 h-6 text-amber-500" />
               <span className="text-2xl font-bold">Monopoly Auction</span>
-              <Badge className="bg-sky-200 text-slate-800">
+              <Badge className="bg-emerald-900/50 border-emerald-500/50 text-emerald-300 font-mono text-lg px-4 border-2 shadow-sm">
+                ROOM CODE: {lobbyCode}
+              </Badge>
+              <Badge className="bg-indigo-900/50 text-indigo-300 border border-indigo-700/50 px-3 flex items-center gap-2">
+                <span dangerouslySetInnerHTML={{__html: myPlayer.pieceIcon}} /> 
+                <span className="font-semibold">You: {myPlayer.name}</span>
+              </Badge>
+              <Badge className="bg-sky-900/50 text-sky-300 border border-sky-700/50">
                 Phase: {gameState.gamePhase}
               </Badge>
             </div>
@@ -307,7 +416,10 @@ const MonopolyGame: React.FC = () => {
             currentPlayer={currentPlayer?.name || 'Unknown'}
             isRolling={isRolling}
             onRollDice={handleDiceRoll}
-            canRoll={gameState.turnState === 'waiting_for_roll'}
+            onEndTurn={endTurn}
+            canRoll={gameState.turnState === 'waiting_for_roll' && isMyTurn}
+            canEndTurn={gameState.turnState === 'completed' && isMyTurn}
+            turnState={gameState.turnState}
             playerColor={currentPlayer?.color || '#DC2626'}
           />
 
@@ -322,30 +434,30 @@ const MonopolyGame: React.FC = () => {
           
           {/* Property Details */}
           {selectedProperty && (
-            <Card className="bg-white border border-slate-200 shadow-sm">
+            <Card className="bg-slate-900 border border-slate-800 shadow-md">
               <CardHeader>
-                <CardTitle className="text-slate-800">Property Details</CardTitle>
+                <CardTitle className="text-slate-100">Property Details</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {/* Basic Info */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <h3 className="font-bold text-slate-800 mb-2">{selectedProperty.name}</h3>
+                      <h3 className="font-bold text-slate-200 mb-2">{selectedProperty.name}</h3>
                       <div className="space-y-1 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Type:</span>
-                          <span className="capitalize text-slate-800">{selectedProperty.type}</span>
+                          <span className="text-slate-400">Type:</span>
+                          <span className="capitalize text-slate-200">{selectedProperty.type}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Current Value:</span>
-                          <span className="font-semibold text-sky-700">
+                          <span className="text-slate-400">Current Value:</span>
+                          <span className="font-semibold text-sky-400">
                             ₹{selectedProperty.currentValue.toLocaleString()}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Mortgage Value:</span>
-                          <span className="text-slate-800">
+                          <span className="text-slate-400">Mortgage Value:</span>
+                          <span className="text-slate-200">
                             ₹{selectedProperty.mortgageValue.toLocaleString()}
                           </span>
                         </div>
@@ -355,11 +467,11 @@ const MonopolyGame: React.FC = () => {
                     <div>
                       {selectedProperty.isOwned && (
                         <div className="space-y-2">
-                          <Badge variant="secondary" className="bg-slate-100 text-slate-800">
+                          <Badge variant="secondary" className="bg-slate-800 text-slate-300 border-slate-700">
                             Owned by {selectedProperty.owner}
                           </Badge>
                           {selectedProperty.isMortgaged && (
-                            <Badge variant="destructive" className="bg-rose-200 text-rose-800">Mortgaged</Badge>
+                            <Badge variant="destructive" className="bg-rose-900/50 text-rose-300 border-rose-800/50">Mortgaged</Badge>
                           )}
                         </div>
                       )}
@@ -384,32 +496,32 @@ const MonopolyGame: React.FC = () => {
 
                   {/* Rent Information */}
                   {selectedProperty.type === 'property' && (
-                    <div className="bg-slate-50 rounded-lg p-4">
-                      <h4 className="font-semibold text-slate-800 mb-3">Rent Structure</h4>
+                    <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
+                      <h4 className="font-semibold text-slate-200 mb-3">Rent Structure</h4>
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Base Rent:</span>
-                          <span className="text-slate-800">₹{selectedProperty.rent[0].toLocaleString()}</span>
+                          <span className="text-slate-400">Base Rent:</span>
+                          <span className="text-slate-200">₹{selectedProperty.rent[0].toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-500">1 House:</span>
-                          <span className="text-slate-800">₹{(selectedProperty.rent[1] || 0).toLocaleString()}</span>
+                          <span className="text-slate-400">1 House:</span>
+                          <span className="text-slate-200">₹{(selectedProperty.rent[1] || 0).toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-500">2 Houses:</span>
-                          <span className="text-slate-800">₹{(selectedProperty.rent[2] || 0).toLocaleString()}</span>
+                          <span className="text-slate-400">2 Houses:</span>
+                          <span className="text-slate-200">₹{(selectedProperty.rent[2] || 0).toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-500">3 Houses:</span>
-                          <span className="text-slate-800">₹{(selectedProperty.rent[3] || 0).toLocaleString()}</span>
+                          <span className="text-slate-400">3 Houses:</span>
+                          <span className="text-slate-200">₹{(selectedProperty.rent[3] || 0).toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-500">4 Houses:</span>
-                          <span className="text-slate-800">₹{(selectedProperty.rent[4] || 0).toLocaleString()}</span>
+                          <span className="text-slate-400">4 Houses:</span>
+                          <span className="text-slate-200">₹{(selectedProperty.rent[4] || 0).toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Hotel:</span>
-                          <span className="text-slate-800">₹{(selectedProperty.rent[5] || 0).toLocaleString()}</span>
+                          <span className="text-slate-400">Hotel:</span>
+                          <span className="text-slate-200">₹{(selectedProperty.rent[5] || 0).toLocaleString()}</span>
                         </div>
                       </div>
                     </div>
@@ -417,16 +529,16 @@ const MonopolyGame: React.FC = () => {
 
                   {/* Building Costs */}
                   {selectedProperty.type === 'property' && (
-                    <div className="bg-green-50 rounded-lg p-4">
-                      <h4 className="font-semibold text-green-800 mb-3">Building Costs</h4>
+                    <div className="bg-emerald-900/20 rounded-lg p-4 border border-emerald-800/30">
+                      <h4 className="font-semibold text-emerald-400 mb-3">Building Costs</h4>
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-green-600">House Cost:</span>
-                          <span className="text-green-800">₹{(selectedProperty.houseCost || 0).toLocaleString()}</span>
+                          <span className="text-emerald-500">House Cost:</span>
+                          <span className="text-emerald-300">₹{(selectedProperty.houseCost || 0).toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-green-600">Hotel Cost:</span>
-                          <span className="text-green-800">₹{(selectedProperty.hotelCost || 0).toLocaleString()}</span>
+                          <span className="text-emerald-500">Hotel Cost:</span>
+                          <span className="text-emerald-300">₹{(selectedProperty.hotelCost || 0).toLocaleString()}</span>
                         </div>
                       </div>
                     </div>
@@ -434,18 +546,18 @@ const MonopolyGame: React.FC = () => {
 
                   {/* Current Development */}
                   {(selectedProperty.houses > 0 || selectedProperty.hasHotel) && (
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <h4 className="font-semibold text-blue-800 mb-2">Current Development</h4>
+                    <div className="bg-blue-900/20 rounded-lg p-4 border border-blue-800/30">
+                      <h4 className="font-semibold text-blue-400 mb-2">Current Development</h4>
                       <div className="flex items-center gap-2">
                         {selectedProperty.hasHotel ? (
                           <div className="flex items-center gap-1">
-                            <span className="text-blue-600">🏨</span>
-                            <span className="text-blue-800">1 Hotel</span>
+                            <span className="text-blue-500">🏨</span>
+                            <span className="text-blue-300">1 Hotel</span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-1">
-                            <span className="text-blue-600">🏠</span>
-                            <span className="text-blue-800">
+                            <span className="text-blue-500">🏠</span>
+                            <span className="text-blue-300">
                               {selectedProperty.houses} House{selectedProperty.houses !== 1 ? 's' : ''}
                             </span>
                           </div>
@@ -484,34 +596,98 @@ const MonopolyGame: React.FC = () => {
                 />
               )}
 
-              {/* Auction Panel */}
-              <AuctionPanel
-                currentAuction={currentAuctionData}
-                pendingPurchase={pendingPurchaseData}
-                ownedPropertyOnTile={ownedPropertyOnTile}
-                onPlaceBid={placeBid}
-                onBuyNow={() => {
-                  if (gameState.pendingPurchase) {
-                    purchaseProperty(gameState.pendingPurchase.propertyId);
-                  }
-                }}
-                onSkipPurchase={() => skipPurchase()}
-                onStartAuction={(pid) => startAuction(pid)}
-                onMakeOffer={(amount) => {
-                  if (ownedPropertyOnTile) {
-                    makeOffer(ownedPropertyOnTile.id, ownedPropertyOnTile.owner as string, amount);
-                  }
-                }}
-                players={gameState.players.map(p => p.name)}
-                currentPlayer={currentPlayer.name}
-              />
+              {/* Property Actions / Auction Panel conditionally shown */}
+              {(currentAuctionData || pendingPurchaseData || ownedPropertyOnTile) && (
+                <AuctionPanel
+                  currentAuction={currentAuctionData}
+                  pendingPurchase={pendingPurchaseData}
+                  ownedPropertyOnTile={ownedPropertyOnTile}
+                  onPlaceBid={placeBid}
+                  onBuyNow={() => {
+                    if (gameState.pendingPurchase) {
+                      purchaseProperty(gameState.pendingPurchase.propertyId);
+                    }
+                  }}
+                  onSkipPurchase={() => skipPurchase()}
+                  onStartAuction={(pid) => startAuction(pid)}
+                  onMakeOffer={(amount) => {
+                    if (ownedPropertyOnTile) {
+                      makeOffer(ownedPropertyOnTile.id, ownedPropertyOnTile.owner as string, amount);
+                    }
+                  }}
+                  players={gameState.players.map(p => p.name)}
+                  currentPlayer={myPlayer.name}
+                  auctionsEnabled={gameState.settings.auctionsEnabled}
+                />
+              )}
+
+              {/* Players Summary Table - Dark theme */}
+              <Card className="bg-black border border-slate-800 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    Players Overview
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-slate-800">
+                          <TableHead className="w-12 text-slate-300">#</TableHead>
+                          <TableHead className="text-slate-300">Player</TableHead>
+                          <TableHead className="text-slate-300">Cash</TableHead>
+                          <TableHead className="text-slate-300 min-w-32">Properties</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {gameState.players.map((p, idx) => {
+                          const propsOwned = gameState.properties.filter(prop => prop.owner === p.name);
+                          const isCurrent = gameState.currentPlayer === p.id;
+                          return (
+                            <TableRow key={p.id} className={`border-slate-800 flex-1 ${isCurrent ? 'bg-slate-900/50' : ''}`}>
+                              <TableCell className="text-slate-200">{idx + 1}</TableCell>
+                              <TableCell className="text-slate-100 font-medium">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-lg" style={{ color: p.color }} dangerouslySetInnerHTML={{__html: p.pieceIcon}} />
+                                  <span>{p.name} {p.id === localPlayerId ? '(You)' : ''}</span>
+                                  {isCurrent && (
+                                    <Badge className="ml-1 bg-sky-500/20 text-sky-400 border border-sky-500/30 text-[0.65rem] px-1 py-0 uppercase">Turn</Badge>
+                                  )}
+                                  {p.isInJail && (
+                                    <Badge variant="destructive" className="ml-1 text-[0.65rem] px-1 py-0">Jail ({p.jailTurns})</Badge>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-emerald-400 font-mono font-bold tracking-tight">₹{(p.balance/1000).toFixed(0)}K</TableCell>
+                              <TableCell className="text-slate-200">
+                                {propsOwned.length === 0 ? (
+                                  <span className="text-slate-600 italic text-xs">None</span>
+                                ) : (
+                                  <div className="flex flex-wrap gap-1">
+                                    {propsOwned.map(op => (
+                                      <Badge key={op.id} variant="secondary" className="text-[0.65rem] bg-slate-800 text-slate-300 border-slate-700 py-0">
+                                        {op.name}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Player Panel */}
               <PlayerPanel
-                currentPlayer={currentPlayer}
+                currentPlayer={myPlayer}
                 allPlayers={gameState.players}
                 teams={gameState.teams}
-                ownedProperties={ownedProperties}
+                ownedProperties={myOwnedProperties}
                 onMortgage={mortgageProperty}
                 onUnmortgage={unmortgageProperty}
                 onSell={handleSellProperty}
@@ -520,63 +696,6 @@ const MonopolyGame: React.FC = () => {
                 onCreateTeam={createTeam}
                 canTeam={gameState.settings.teamsEnabled}
               />
-
-          {/* Players Summary Table - Dark theme */}
-          <Card className="bg-black border border-slate-800 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-white">Players Overview</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-slate-800">
-                      <TableHead className="w-12 text-slate-300">#</TableHead>
-                      <TableHead className="text-slate-300">Player</TableHead>
-                      <TableHead className="text-slate-300">Cash</TableHead>
-                      <TableHead className="text-slate-300">Properties</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {gameState.players.map((p, idx) => {
-                      const propsOwned = gameState.properties.filter(prop => prop.owner === p.name);
-                      return (
-                        <TableRow key={p.id} className="border-slate-800">
-                          <TableCell className="text-slate-200">{idx + 1}</TableCell>
-                          <TableCell className="text-slate-100">
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg" style={{ color: p.color }}>{p.pieceIcon}</span>
-                              <span className="font-medium">{p.name}</span>
-                              {gameState.currentPlayer === p.id && (
-                                <Badge className="ml-2 bg-sky-500/20 text-sky-300">Current</Badge>
-                              )}
-                              {p.isInJail && (
-                                <Badge variant="destructive" className="ml-2">Jail ({p.jailTurns})</Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-emerald-300">₹{p.balance.toLocaleString()}</TableCell>
-                          <TableCell className="text-slate-200">
-                            {propsOwned.length === 0 ? (
-                              <span className="text-slate-500">—</span>
-                            ) : (
-                              <div className="flex flex-wrap gap-1">
-                                {propsOwned.map(op => (
-                                  <Badge key={op.id} variant="secondary" className="text-xs bg-slate-700 text-slate-100">
-                                    {op.name}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
 
               {/* Trading System */}
               {gameState.settings.tradingEnabled && (

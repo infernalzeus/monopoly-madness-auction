@@ -22,7 +22,10 @@ interface CentralDisplayProps {
   lastDiceRoll: DiceRoll | null;
   isRolling: boolean;
   onRollDice: () => void;
+  onEndTurn?: () => void;
   canRoll: boolean;
+  canEndTurn?: boolean;
+  turnState?: string;
   playerColor: string;
 }
 
@@ -32,7 +35,10 @@ const CentralDisplay: React.FC<CentralDisplayProps> = ({
   lastDiceRoll,
   isRolling,
   onRollDice,
+  onEndTurn,
   canRoll,
+  canEndTurn,
+  turnState,
   playerColor
 }) => {
   const [displayText, setDisplayText] = useState<string>('');
@@ -168,29 +174,44 @@ const CentralDisplay: React.FC<CentralDisplayProps> = ({
             </div>
           )}
 
-          {/* Roll Dice Button */}
+          {/* Roll / End Turn Button */}
           <div className="flex justify-center">
-            <button
-              onClick={onRollDice}
-              disabled={!canRoll || isRolling}
-              className={`
-                px-6 py-2 rounded-lg font-bold text-sm transition-all duration-200 transform
-                ${canRoll && !isRolling
-                  ? 'bg-black hover:bg-gray-900 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95'
-                  : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                }
-                ${isRolling ? 'animate-pulse' : ''}
-              `}
-            >
-              {isRolling ? (
-                <div className="flex items-center gap-1">
-                  <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
-                  Rolling...
-                </div>
+            {turnState === 'completed' ? (
+              canEndTurn ? (
+                <button
+                  onClick={onEndTurn}
+                  className="px-6 py-2 rounded-lg font-bold text-sm transition-all duration-200 transform bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
+                >
+                  🛑 End Turn
+                </button>
               ) : (
-                '🎲 Roll Dice'
-              )}
-            </button>
+                <div className="text-gray-400 text-sm font-semibold animate-pulse">
+                  Waiting for {currentPlayer} to end turn...
+                </div>
+              )
+            ) : (
+              <button
+                onClick={onRollDice}
+                disabled={!canRoll || isRolling}
+                className={`
+                  px-6 py-2 rounded-lg font-bold text-sm transition-all duration-200 transform
+                  ${canRoll && !isRolling
+                    ? 'bg-black hover:bg-gray-900 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95'
+                    : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                  }
+                  ${isRolling ? 'animate-pulse' : ''}
+                `}
+              >
+                {isRolling ? (
+                  <div className="flex items-center gap-1">
+                    <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                    Rolling...
+                  </div>
+                ) : (
+                  '🎲 Roll Dice'
+                )}
+              </button>
+            )}
           </div>
         </div>
 

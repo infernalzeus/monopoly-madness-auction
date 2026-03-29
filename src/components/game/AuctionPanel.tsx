@@ -14,7 +14,7 @@ interface AuctionPanelProps {
     timeRemaining: number;
     bids: AuctionBid[];
   } | null;
-  pendingPurchase: { property: Property } | null;
+  pendingPurchase: { property: Property; isMine?: boolean } | null;
   ownedPropertyOnTile: Property | null;
   onPlaceBid: (amount: number) => void;
   onBuyNow: () => void;
@@ -23,6 +23,7 @@ interface AuctionPanelProps {
   onMakeOffer: (amount: number) => void;
   players: string[];
   currentPlayer: string;
+  auctionsEnabled: boolean;
 }
 
 const AuctionPanel: React.FC<AuctionPanelProps> = ({
@@ -35,7 +36,8 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
   onStartAuction,
   onMakeOffer,
   players,
-  currentPlayer
+  currentPlayer,
+  auctionsEnabled
 }) => {
   const [bidAmount, setBidAmount] = useState<string>('');
   const [offerAmount, setOfferAmount] = useState<string>('');
@@ -52,48 +54,56 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
         </CardHeader>
         <CardContent className="space-y-4">
           {pendingPurchase ? (
-            <div className="space-y-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-lg">
+            <div className="space-y-4 p-4 bg-emerald-900/20 border-2 border-emerald-500/30 rounded-lg">
               <div className="text-center">
-                <h3 className="text-lg font-bold text-green-800 mb-2">🏠 Property Available!</h3>
-                <div className="text-sm text-green-700">
-                  You landed on an unowned property
+                <h3 className="text-lg font-bold text-emerald-400 mb-2">🏠 Property Available!</h3>
+                <div className="text-sm text-emerald-500">
+                  Unowned property landed on
                 </div>
               </div>
               
-              <div className="bg-white rounded-lg p-4 border border-green-200">
+              <div className="bg-slate-900 rounded-lg p-4 border border-emerald-700/50 shadow-inner">
                 <div className="text-center mb-3">
-                  <div className="text-xl font-bold text-green-800">{pendingPurchase.property.name}</div>
-                  <div className="text-sm text-green-600">Current Market Value</div>
+                  <div className="text-xl font-bold text-emerald-300">{pendingPurchase.property.name}</div>
+                  <div className="text-sm text-emerald-600">Current Market Value</div>
                 </div>
                 
                 <div className="text-center mb-4">
-                  <div className="text-3xl font-bold text-green-700">
+                  <div className="text-3xl font-bold text-emerald-400">
                     ₹{pendingPurchase.property.currentValue.toLocaleString()}
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-3 gap-2">
-                  <Button 
-                    onClick={onBuyNow} 
-                    className="bg-green-600 hover:bg-green-700 text-white font-bold"
-                  >
-                    💰 Buy Now
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => onStartAuction(pendingPurchase.property.id)} 
-                    className="border-blue-400 text-blue-600 hover:bg-blue-50"
-                  >
-                    🔨 Auction
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={onSkipPurchase} 
-                    className="border-gray-400 text-gray-600 hover:bg-gray-50"
-                  >
-                    ⏭️ Skip
-                  </Button>
-                </div>
+                {pendingPurchase.isMine === false ? (
+                  <div className="text-center text-sm text-emerald-500 italic font-semibold">
+                    Waiting for player to decide...
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button 
+                      onClick={onBuyNow} 
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                    >
+                      💰 Buy Now
+                    </Button>
+                    {auctionsEnabled && (
+                      <Button 
+                        variant="outline" 
+                        onClick={() => onStartAuction(pendingPurchase.property.id)} 
+                        className="border-sky-500/50 text-sky-400 hover:bg-sky-900/30"
+                      >
+                        🔨 Auction
+                      </Button>
+                    )}
+                    <Button 
+                      variant="outline" 
+                      onClick={onSkipPurchase} 
+                      className="border-slate-500/50 text-slate-300 hover:bg-slate-800"
+                    >
+                      ⏭️ Skip
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
