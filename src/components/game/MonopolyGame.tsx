@@ -193,7 +193,13 @@ const MonopolyGame: React.FC = () => {
          }
       };
       
-      await setDoc(roomRef, { gameState: firstState, status: 'waiting' });
+      await setDoc(roomRef, { 
+        gameState: firstState, 
+        status: 'waiting',
+        hostName: playerName,
+        lastUpdated: Date.now(),
+        playerCount: 1
+      });
       
       setLobbyCode(code);
       setLocalPlayerId('player-1');
@@ -252,7 +258,12 @@ const MonopolyGame: React.FC = () => {
               state.gamePhase = 'playing';
             }
           }
-          await setDoc(roomRef, { ...data, gameState: state });
+          await setDoc(roomRef, { 
+            ...data, 
+            gameState: state,
+            lastUpdated: Date.now(),
+            playerCount: state.players.length
+          });
         }
         
         setLobbyCode(code);

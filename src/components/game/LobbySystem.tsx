@@ -7,18 +7,24 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-  Users,
-  Plus,
-  Hash,
-  Settings,
-  Crown,
-  Gamepad2,
-  Gavel,
-  Edit3,
-  Handshake
+import { 
+  Users, 
+  Plus, 
+  Hash, 
+  Settings, 
+  Crown, 
+  Gamepad2, 
+  Gavel, 
+  Edit3, 
+  Handshake, 
+  Trash2,
+  AlertCircle,
+  Clock
 } from 'lucide-react';
 import { Lobby, GameSettings } from '@/types/game';
+import { db } from '@/lib/firebase';
+import { collection, query, onSnapshot, deleteDoc, doc, orderBy, limit } from 'firebase/firestore';
+import { useEffect } from 'react';
 
 interface LobbySystemProps {
   onCreateLobby: (settings: GameSettings, code: string, playerName: string) => void;
@@ -29,6 +35,8 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
   const [showCreateLobby, setShowCreateLobby] = useState(false);
   const [joinCode, setJoinCode] = useState('');
   const [playerName, setPlayerName] = useState('');
+  const [activeGames, setActiveGames] = useState<any[]>([]);
+  const [deleteCooldown, setDeleteCooldown] = useState<number | null>(null);
   const [generatedCode] = useState(() => Math.floor(100000 + Math.random() * 900000).toString());
   const [lobbySettings, setLobbySettings] = useState<GameSettings>({
     gameMode: 'classic',
@@ -45,6 +53,69 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
     preAuctionProperties: [],
     customPropertyLists: {}
   });
+
+  // Fetch active games
+  useEffect(() => {
+    const q = query(collection(db, 'games'), orderBy('lastUpdated', 'desc'), limit(15));
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const games = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setActiveGames(games);
+    });
+
+    // Load delete cooldown
+    const lastDelete = localStorage.getItem('lastDeleteTime');
+    if (lastDelete) {
+      const cooldownTime = 60 * 60 * 1000; // 1 hour
+      const timePassed = Date.now() - parseInt(lastDelete);
+      if (timePassed < cooldownTime) {
+        setDeleteCooldown(cooldownTime - timePassed);
+        const timer = setInterval(() => {
+          const remaining = cooldownTime - (Date.now() - parseInt(lastDelete));
+          if (remaining <= 0) {
+            setDeleteCooldown(null);
+            clearInterval(timer);
+          } else {
+            setDeleteCooldown(remaining);
+          }
+        }, 1000);
+        return () => {
+          unsubscribe();
+          clearInterval(timer);
+        };
+      }
+    }
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleDeleteGame = async (gameId: string, hostName: string, status: string, lastUpdated: number) => {
+    // Check cooldown
+    if (deleteCooldown !== null) {
+      alert(`Please wait ${Math.ceil(deleteCooldown / 60000)} minutes before deleting another game.`);
+      return;
+    }
+
+    // Check if user is host or game is inactive
+    const isHost = playerName && hostName === playerName;
+    const isInactive = status === 'ended' || (Date.now() - lastUpdated) > (2 * 60 * 60 * 1000); // 2 hours since last update
+
+    if (!isHost && !isInactive) {
+      alert("You can only delete games that you hosted or those that are inactive (2+ hours since last update).");
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete game ${gameId}?`)) return;
+
+    try {
+      await deleteDoc(doc(db, 'games', gameId));
+      localStorage.setItem('lastDeleteTime', Date.now().toString());
+      setDeleteCooldown(60 * 60 * 1000);
+      alert("Game deleted successfully.");
+    } catch (e: any) {
+      console.error("Error deleting game:", e);
+      alert("Failed to delete game: " + e.message);
+    }
+  };
 
   const handleCreateLobby = () => {
     if (!playerName.trim()) { alert('Please enter your name to create a lobby.'); return; }
@@ -179,6 +250,92 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
               </Button>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Active Games List */}
+        <div className="mt-12 space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-3xl font-bold text-white flex items-center gap-3">
+              <Gamepad2 className="w-8 h-8 text-cyan-400" />
+              Active Lobbies
+            </h2>
+            {deleteCooldown !== null && (
+              <Badge variant="outline" className="text-amber-400 border-amber-400 gap-2">
+                <Clock className="w-4 h-4" />
+                Delete Cooldown: {Math.ceil(deleteCooldown / 60000)}m
+              </Badge>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {activeGames.length === 0 ? (
+              <div className="col-span-full py-12 text-center bg-slate-800/30 rounded-xl border-2 border-dashed border-slate-700">
+                <p className="text-slate-400 text-lg">No active lobbies found. Create one to start!</p>
+              </div>
+            ) : (
+              activeGames.map((game) => {
+                const isInactive = (Date.now() - (game.lastUpdated || 0)) > (2 * 60 * 60 * 1000);
+                const isMyGame = playerName && game.hostName === playerName;
+
+                return (
+                  <Card key={game.id} className="bg-slate-800/80 border-slate-700 hover:border-cyan-400/50 transition-colors backdrop-blur-sm">
+                    <CardHeader className="pb-3">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-xl font-mono text-cyan-300">#{game.id}</CardTitle>
+                          <p className="text-sm text-slate-400 mt-1 flex items-center gap-1">
+                            <Crown className="w-3 h-3 text-yellow-500" />
+                            Host: {game.hostName || 'Unknown'}
+                          </p>
+                        </div>
+                        <Badge className={`${game.status === 'waiting' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                          {game.status || 'Active'}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex justify-between items-center text-sm mb-4">
+                        <div className="flex items-center gap-2 text-slate-300">
+                          <Users className="w-4 h-4" />
+                          <span>{game.playerCount || 0} / {game.gameState?.settings?.maxPlayers || 4}</span>
+                        </div>
+                        <div className="text-slate-400">
+                          {isInactive ? (
+                            <span className="flex items-center gap-1 text-amber-400">
+                              <AlertCircle className="w-3 h-3" /> Inactive
+                            </span>
+                          ) : 'Recently active'}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => {
+                            setJoinCode(game.id);
+                            // Scroll to top
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          className="flex-1 bg-slate-700 hover:bg-slate-600 border-slate-600 text-white text-xs h-8"
+                        >
+                          Select Code
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="h-8 w-8"
+                          disabled={!isMyGame && !isInactive}
+                          onClick={() => handleDeleteGame(game.id, game.hostName, game.status, game.lastUpdated)}
+                          title={isMyGame || isInactive ? "Delete game" : "Cannot delete active games of others"}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
+          </div>
         </div>
 
         {/* Create Lobby Settings Dialog */}

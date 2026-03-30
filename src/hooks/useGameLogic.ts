@@ -230,7 +230,11 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
       }
       const currentState = snap.data().gameState;
       let nextState = typeof updater === 'function' ? updater(currentState) : updater;
-      transaction.update(roomRef, { gameState: nextState });
+      transaction.update(roomRef, { 
+        gameState: nextState,
+        lastUpdated: Date.now(),
+        playerCount: nextState.players.length
+      });
     }).catch(console.error);
   }, [roomId, gameStateInternal]);
   
