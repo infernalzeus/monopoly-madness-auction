@@ -51,14 +51,22 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
     jailFine: 50000,
     allowPropertyEditing: false,
     preAuctionProperties: [],
-    customPropertyLists: {}
+    customPropertyLists: {},
+    isPrivate: false,
+    gameType: 'standard'
   });
 
   // Fetch active games
   useEffect(() => {
-    const q = query(collection(db, 'games'), orderBy('lastUpdated', 'desc'), limit(15));
+    const q = query(collection(db, 'games'), orderBy('lastUpdated', 'desc'), limit(30));
     const unsubscribe = onSnapshot(q, (snap) => {
-      const games = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const oneMinuteAgo = Date.now() - 60000;
+      const games = snap.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter((g: any) => 
+          !g.gameState?.settings?.isPrivate && 
+          (g.lastUpdated || 0) > oneMinuteAgo
+        );
       setActiveGames(games);
     });
 
@@ -97,7 +105,7 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
 
     // Check if user is host or game is inactive
     const isHost = playerName && hostName === playerName;
-    const isInactive = status === 'ended' || (Date.now() - lastUpdated) > (2 * 60 * 60 * 1000); // 2 hours since last update
+    const isInactive = status === 'ended' || (Date.now() - lastUpdated) > 60000; // 1 minute since last update (heartbeat failure)
 
     if (!isHost && !isInactive) {
       alert("You can only delete games that you hosted or those that are inactive (2+ hours since last update).");
@@ -274,7 +282,7 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
               </div>
             ) : (
               activeGames.map((game) => {
-                const isInactive = (Date.now() - (game.lastUpdated || 0)) > (2 * 60 * 60 * 1000);
+                const isInactive = (Date.now() - (game.lastUpdated || 0)) > 60000;
                 const isMyGame = playerName && game.hostName === playerName;
 
                 return (
@@ -283,10 +291,24 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                       <div className="flex justify-between items-start">
                         <div>
                           <CardTitle className="text-xl font-mono text-cyan-300">#{game.id}</CardTitle>
-                          <p className="text-sm text-slate-400 mt-1 flex items-center gap-1">
-                            <Crown className="w-3 h-3 text-yellow-500" />
-                            Host: {game.hostName || 'Unknown'}
-                          </p>
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            <p className="text-sm text-slate-400 flex items-center gap-1">
+                              <Crown className="w-3 h-3 text-yellow-500" />
+                              {game.hostName || 'Unknown'}
+                            </p>
+                            <Badge 
+                              variant="outline" 
+                              className={`text-[0.65rem] capitalize ${
+                                game.gameState?.settings?.gameType === 'auction' 
+                                  ? 'text-yellow-400 border-yellow-500/50 bg-yellow-500/10' 
+                                  : game.gameState?.settings?.gameType === 'team-up' 
+                                    ? 'text-indigo-400 border-indigo-500/50 bg-indigo-500/10' 
+                                    : 'text-cyan-400 border-cyan-500/50 bg-cyan-500/10'
+                              }`}
+                            >
+                              {game.gameState?.settings?.gameType?.replace('-', ' ') || 'Standard'}
+                            </Badge>
+                          </div>
                         </div>
                         <Badge className={`${game.status === 'waiting' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'}`}>
                           {game.status || 'Active'}
@@ -302,9 +324,14 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                         <div className="text-slate-400">
                           {isInactive ? (
                             <span className="flex items-center gap-1 text-amber-400">
-                              <AlertCircle className="w-3 h-3" /> Inactive
+                              <AlertCircle className="w-3 h-3" /> Offline
                             </span>
-                          ) : 'Recently active'}
+                          ) : (
+                            <span className="flex items-center gap-1 text-emerald-400">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                              Live
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -417,14 +444,47 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                       }
                     />
                   </div>
+                  <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg border border-cyan-400/30">
+                    <div className="flex items-center gap-3">
+                      <Plus className="w-5 h-5 text-indigo-400" />
+                      <div>
+                        <Label className="text-cyan-200 font-semibold">Private Room</Label>
+                        <p className="text-xs text-slate-400">Hidden from public lobby list</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={lobbySettings.isPrivate}
+                      onCheckedChange={(checked) =>
+                        setLobbySettings(prev => ({ ...prev, isPrivate: checked }))
+                      }
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Player Count */}
+              {/* Game Settings */}
               <div className="space-y-4">
                 <h3 className="text-lg font-bold text-cyan-300">Game Settings</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-cyan-200 font-semibold">Game Type</Label>
+                    <Select
+                      value={lobbySettings.gameType}
+                      onValueChange={(val: 'auction' | 'team-up' | 'standard') =>
+                        setLobbySettings(prev => ({ ...prev, gameType: val }))
+                      }
+                    >
+                      <SelectTrigger className="bg-slate-700 border-cyan-400/50 text-cyan-100">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-cyan-400 text-cyan-100">
+                        <SelectItem value="standard">Standard</SelectItem>
+                        <SelectItem value="auction">Auction Focus</SelectItem>
+                        <SelectItem value="team-up">Team Up</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
                     <Label className="text-cyan-200 font-semibold">Max Players</Label>
                     <Input
                       type="number"
@@ -440,7 +500,7 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                       className="bg-slate-700 border-cyan-400/50 text-cyan-100"
                     />
                   </div>
-                  <div>
+                  <div className="col-span-full md:col-span-2">
                     <Label className="text-cyan-200 font-semibold">Starting Balance</Label>
                     <Input
                       type="number"

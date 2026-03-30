@@ -85,6 +85,8 @@ export interface GameSettings {
   allowPropertyEditing: boolean;
   preAuctionProperties: string[]; // Property IDs to auction at start
   customPropertyLists: Record<string, string[]>; // Named property lists for editing
+  isPrivate: boolean;
+  gameType: 'auction' | 'team-up' | 'standard';
 }
 
 export interface DiceRoll {

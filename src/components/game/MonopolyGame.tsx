@@ -103,6 +103,46 @@ const MonopolyGame: React.FC = () => {
   const myOwnedProperties = gameState.properties.filter(p => p.owner === myPlayer.name);
   const ownedProperties = gameState.properties.filter(p => p.owner === currentPlayer.name);
 
+  // Host heartbeat and cleanup
+  useEffect(() => {
+    if (!isLobbyOwner || !lobbyCode) return;
+
+    // Heartbeat every 30 seconds to keep game active
+    const heartbeat = setInterval(async () => {
+      try {
+        const roomRef = doc(db, 'games', lobbyCode);
+        const snap = await getDoc(roomRef);
+        if (snap.exists()) {
+          const data = snap.data();
+          await setDoc(roomRef, {
+            ...data,
+            lastUpdated: Date.now()
+          });
+        }
+      } catch (e) {
+        console.error("Heartbeat error:", e);
+      }
+    }, 30000);
+
+    // Cleanup on beforeunload (best effort)
+    const handleUnload = async (e: BeforeUnloadEvent) => {
+      // We can't await here reliably, but we can try to send a delete request
+      const roomRef = doc(db, 'games', lobbyCode);
+      // navigator.sendBeacon or similar? Firestore doesn't support sendBeacon directly.
+      // We'll rely on the heartbeat timeout for cleanup if this fails.
+      // But we can try a quick update to mark as inactive
+      const data = { status: 'ended', lastUpdated: Date.now() };
+      // This might not finish, which is why the heartbeat timeout is the primary mechanism.
+    };
+
+    window.addEventListener('beforeunload', handleUnload);
+
+    return () => {
+      clearInterval(heartbeat);
+      window.removeEventListener('beforeunload', handleUnload);
+    };
+  }, [isLobbyOwner, lobbyCode]);
+
   // Manage current display event with 1-second timer
   useEffect(() => {
     if (gameState.gameEvents.length > 0) {
