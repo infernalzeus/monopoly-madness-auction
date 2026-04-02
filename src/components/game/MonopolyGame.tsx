@@ -527,164 +527,138 @@ const MonopolyGame: React.FC = () => {
           </div>
           
           <div className="w-full lg:w-1/4 space-y-6">
-
-
-          {/* Game Mode Indicator */}
-          <div className="flex justify-center">
-            <Badge 
-              className="text-lg px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold"
-            >
-              Mode: {gameState.settings.gameMode.toUpperCase()}
-            </Badge>
-          </div>
-          
-          {/* Property Details */}
-          {selectedProperty && (
-            <Card className="bg-slate-900 border border-slate-800 shadow-md">
-              <CardHeader>
-                <CardTitle className="text-slate-100">Property Details</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {/* Basic Info */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h3 className="font-bold text-slate-200 mb-2">{selectedProperty.name}</h3>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Type:</span>
-                          <span className="capitalize text-slate-200">{selectedProperty.type}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Current Value:</span>
-                          <span className="font-semibold text-sky-400">
-                            ₹{selectedProperty.currentValue.toLocaleString()}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Mortgage Value:</span>
-                          <span className="text-slate-200">
-                            ₹{selectedProperty.mortgageValue.toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      {selectedProperty.isOwned && (
-                        <div className="space-y-2">
-                          <Badge variant="secondary" className="bg-slate-800 text-slate-300 border-slate-700">
-                            Owned by {selectedProperty.owner}
-                          </Badge>
-                          {selectedProperty.isMortgaged && (
-                            <Badge variant="destructive" className="bg-rose-900/50 text-rose-300 border-rose-800/50">Mortgaged</Badge>
-                          )}
-                        </div>
-                      )}
-                      
-                      {selectedProperty.isInAuction && (
-                        <Badge className="bg-amber-200 text-amber-900">
-                          Currently in Auction
-                        </Badge>
-                      )}
-
-                      {/* Build controls if owned by current player */}
-                      {selectedProperty.owner === currentPlayer.name && selectedProperty.type === 'property' && (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <Button size="sm" variant="outline" onClick={() => buildHouse(selectedProperty.id)}>Build House</Button>
-                          <Button size="sm" variant="outline" onClick={() => sellHouse(selectedProperty.id)} disabled={selectedProperty.houses === 0}>Sell House</Button>
-                          <Button size="sm" variant="outline" onClick={() => buildHotel(selectedProperty.id)} disabled={selectedProperty.houses !== 4 || selectedProperty.hasHotel}>Build Hotel</Button>
-                          <Button size="sm" variant="outline" onClick={() => sellHotel(selectedProperty.id)} disabled={!selectedProperty.hasHotel}>Sell Hotel</Button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Rent Information */}
-                  {selectedProperty.type === 'property' && (
-                    <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
-                      <h4 className="font-semibold text-slate-200 mb-3">Rent Structure</h4>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Base Rent:</span>
-                          <span className="text-slate-200">₹{selectedProperty.rent[0].toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">1 House:</span>
-                          <span className="text-slate-200">₹{(selectedProperty.rent[1] || 0).toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">2 Houses:</span>
-                          <span className="text-slate-200">₹{(selectedProperty.rent[2] || 0).toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">3 Houses:</span>
-                          <span className="text-slate-200">₹{(selectedProperty.rent[3] || 0).toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">4 Houses:</span>
-                          <span className="text-slate-200">₹{(selectedProperty.rent[4] || 0).toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Hotel:</span>
-                          <span className="text-slate-200">₹{(selectedProperty.rent[5] || 0).toLocaleString()}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Building Costs */}
-                  {selectedProperty.type === 'property' && (
-                    <div className="bg-emerald-900/20 rounded-lg p-4 border border-emerald-800/30">
-                      <h4 className="font-semibold text-emerald-400 mb-3">Building Costs</h4>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-emerald-500">House Cost:</span>
-                          <span className="text-emerald-300">₹{(selectedProperty.houseCost || 0).toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-emerald-500">Hotel Cost:</span>
-                          <span className="text-emerald-300">₹{(selectedProperty.hotelCost || 0).toLocaleString()}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Current Development */}
-                  {(selectedProperty.houses > 0 || selectedProperty.hasHotel) && (
-                    <div className="bg-blue-900/20 rounded-lg p-4 border border-blue-800/30">
-                      <h4 className="font-semibold text-blue-400 mb-2">Current Development</h4>
-                      <div className="flex items-center gap-2">
-                        {selectedProperty.hasHotel ? (
-                          <div className="flex items-center gap-1">
-                            <span className="text-blue-500">🏨</span>
-                            <span className="text-blue-300">1 Hotel</span>
+            {/* Game Mode Indicator */}
+            <div className="flex justify-center">
+              <Badge 
+                className="text-lg px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold"
+              >
+                Mode: {gameState.settings.gameMode.toUpperCase()}
+              </Badge>
+            </div>
+            
+            {/* Property Details OR My Portfolio */}
+            {selectedProperty ? (
+              <Card className="bg-slate-900 border border-slate-800 shadow-md">
+                <CardHeader>
+                  <CardTitle className="text-slate-100">Property Details</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {/* Basic Info */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <h3 className="font-bold text-slate-200 mb-2">{selectedProperty.name}</h3>
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Type:</span>
+                            <span className="capitalize text-slate-200">{selectedProperty.type}</span>
                           </div>
-                        ) : (
-                          <div className="flex items-center gap-1">
-                            <span className="text-blue-500">🏠</span>
-                            <span className="text-blue-300">
-                              {selectedProperty.houses} House{selectedProperty.houses !== 1 ? 's' : ''}
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Current Value:</span>
+                            <span className="font-semibold text-sky-400">
+                              ₹{selectedProperty.currentValue.toLocaleString()}
                             </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Mortgage Value:</span>
+                            <span className="text-slate-200">
+                              ₹{selectedProperty.mortgageValue.toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        {selectedProperty.isOwned && (
+                          <div className="space-y-2">
+                            <Badge variant="secondary" className="bg-slate-800 text-slate-300 border-slate-700">
+                              Owned by {selectedProperty.owner}
+                            </Badge>
+                            {selectedProperty.isMortgaged && (
+                              <Badge variant="destructive" className="bg-rose-900/50 text-rose-300 border-rose-800/50">Mortgaged</Badge>
+                            )}
+                          </div>
+                        )}
+                        
+                        {selectedProperty.isInAuction && (
+                          <Badge className="bg-amber-200 text-amber-900">
+                            Currently in Auction
+                          </Badge>
+                        )}
+
+                        {/* Build controls if owned by current player */}
+                        {selectedProperty.owner === currentPlayer.name && selectedProperty.type === 'property' && (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <Button size="sm" variant="outline" onClick={() => buildHouse(selectedProperty.id)}>Build House</Button>
+                            <Button size="sm" variant="outline" onClick={() => sellHouse(selectedProperty.id)} disabled={selectedProperty.houses === 0}>Sell House</Button>
+                            <Button size="sm" variant="outline" onClick={() => buildHotel(selectedProperty.id)} disabled={selectedProperty.houses !== 4 || selectedProperty.hasHotel}>Build Hotel</Button>
+                            <Button size="sm" variant="outline" onClick={() => sellHotel(selectedProperty.id)} disabled={!selectedProperty.hasHotel}>Sell Hotel</Button>
                           </div>
                         )}
                       </div>
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+
+                    {/* Rent Information */}
+                    {selectedProperty.type === 'property' && (
+                      <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
+                        <h4 className="font-semibold text-slate-200 mb-3">Rent Structure</h4>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Base Rent:</span>
+                            <span className="text-slate-200">₹{selectedProperty.rent[0].toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">1 House:</span>
+                            <span className="text-slate-200">₹{(selectedProperty.rent[1] || 0).toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">2 Houses:</span>
+                            <span className="text-slate-200">₹{(selectedProperty.rent[2] || 0).toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">3 Houses:</span>
+                            <span className="text-slate-200">₹{(selectedProperty.rent[3] || 0).toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">4 Houses:</span>
+                            <span className="text-slate-200">₹{(selectedProperty.rent[4] || 0).toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Hotel:</span>
+                            <span className="text-slate-200">₹{(selectedProperty.rent[5] || 0).toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              /* If no property is selected, show my portfolio dashboard */
+              <PlayerPanel
+                currentPlayer={myPlayer}
+                allPlayers={gameState.players}
+                teams={gameState.teams}
+                ownedProperties={myOwnedProperties}
+                onMortgage={mortgageProperty}
+                onUnmortgage={unmortgageProperty}
+                onSell={handleSellProperty}
+                onTrade={handleTradeOffer}
+                onJoinTeam={joinTeam}
+                onCreateTeam={createTeam}
+                canTeam={gameState.settings.teamsEnabled}
+              />
+            )}
           </div>
         </div>
 
         {/* Bottom Section - Control Panels */}
         <div className="flex flex-col gap-6">
           {/* Only show relevant panels based on game state */}
-          {gameState.gamePhase === 'playing' && (
+          {(gameState.gamePhase as string) !== 'setup' && (
             <>
               {/* Pre-Auction Panel */}
-              {gameState.preAuctionPhase && (
+              {gameState.gamePhase === 'auction' && gameState.preAuctionPhase && (
                 <PreAuctionPanel
                   properties={gameState.properties}
                   preAuctionProperties={gameState.settings.preAuctionProperties}
@@ -692,12 +666,7 @@ const MonopolyGame: React.FC = () => {
                   players={gameState.players.map(p => p.name)}
                   currentPlayer={currentPlayer.name}
                   onPlaceBid={placeBid}
-                  onEndAuction={() => {
-                    // End current auction logic
-                    if (gameState.currentAuction) {
-                      // Auto-end auction logic here
-                    }
-                  }}
+                  onEndAuction={() => {}}
                   onStartNextAuction={handleStartNextAuction}
                   onFinishPreAuction={handleEndPreAuction}
                 />
@@ -707,7 +676,7 @@ const MonopolyGame: React.FC = () => {
               <Card className="bg-black border border-slate-800 shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-white flex items-center gap-2">
-                    <Users className="w-5 h-5" />
+                    <Users className="w-5 h-5 text-blue-400" />
                     Players Overview
                   </CardTitle>
                 </CardHeader>
@@ -764,86 +733,77 @@ const MonopolyGame: React.FC = () => {
                 </CardContent>
               </Card>
 
-              {/* Player Panel - Only show if Teams mode is enabled (per user instructions "Only if auction/team/trade mode is selected") */}
-              {(gameState.settings as any).gameType === 'team-up' || gameState.settings.teamsEnabled ? (
-                <PlayerPanel
-                  currentPlayer={myPlayer}
-                  allPlayers={gameState.players}
-                  teams={gameState.teams}
-                  ownedProperties={myOwnedProperties}
-                  onMortgage={mortgageProperty}
-                  onUnmortgage={unmortgageProperty}
-                  onSell={handleSellProperty}
-                  onTrade={handleTradeOffer}
-                  onJoinTeam={joinTeam}
-                  onCreateTeam={createTeam}
-                  canTeam={gameState.settings.teamsEnabled}
-                />
-              ) : null}
-
               {/* Trading System */}
               {gameState.settings.tradingEnabled && (
                 <TradingSystem
-                  currentPlayer={currentPlayer}
+                  currentPlayer={myPlayer}
                   allPlayers={gameState.players}
-                  ownedProperties={ownedProperties}
+                  ownedProperties={myOwnedProperties}
                   tradeOffers={gameState.tradeOffers}
                   onCreateTradeOffer={createTradeOffer}
                   onAcceptTradeOffer={acceptTradeOffer}
                   onRejectTradeOffer={rejectTradeOffer}
-                  onPlaceTradeBid={() => {}} // Placeholder for future bidding functionality
+                  onPlaceTradeBid={() => {}} 
                 />
               )}
 
-          {/* Game Log Drawer Trigger */}
-          <div className="fixed bottom-4 right-4 z-50">
-            <Button onClick={() => setIsLogOpen(true)} className="bg-slate-800 text-white hover:bg-slate-700">Open Log</Button>
-          </div>
+              {/* Game Log Drawer Trigger */}
+              <div className="fixed bottom-4 right-4 z-50">
+                <Button 
+                  onClick={() => setIsLogOpen(true)} 
+                  className="bg-slate-800 text-white hover:bg-slate-700 shadow-xl border border-slate-600 flex items-center gap-2 px-6 py-4 rounded-full"
+                >
+                  📜 <span className="hidden sm:inline">Game Log</span>
+                </Button>
+              </div>
             </>
           )}
 
           {/* Pre-Auction Dialog */}
           <Dialog open={showPreAuctionDialog} onOpenChange={setShowPreAuctionDialog}>
-            <DialogContent className="max-w-md bg-gradient-to-br from-slate-800 to-slate-900 border-2 border-yellow-400">
+            <DialogContent className="max-w-md bg-slate-900 border-2 border-yellow-500 text-white">
               <DialogHeader>
-                <DialogTitle className="text-2xl font-bold text-yellow-300 flex items-center gap-3">
+                <DialogTitle className="text-2xl font-bold text-yellow-500 flex items-center gap-3">
                   <Gavel className="w-6 h-6" />
                   Pre-Auction Phase
                 </DialogTitle>
               </DialogHeader>
-              <div className="space-y-4">
-                <p className="text-yellow-200">
-                  You've enabled auction mode! Players will now auction for properties before the main game begins.
+              <div className="space-y-4 py-4">
+                <p className="text-slate-300">
+                  Auction mode is enabled! You will now bid for properties before starting the standard game.
                 </p>
-                <div className="bg-yellow-500/20 p-4 rounded-lg border border-yellow-400/30">
-                  <h4 className="font-bold text-yellow-300 mb-2">Auction Rules:</h4>
-                  <ul className="text-sm text-yellow-200 space-y-1">
-                    <li>• Properties will be auctioned one by one</li>
-                    <li>• Starting bid is 70% of property value</li>
-                    <li>• Highest bidder wins the property</li>
-                    <li>• Regular Monopoly gameplay begins after auctions</li>
+                <div className="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/20">
+                  <h4 className="font-bold text-yellow-400 mb-2">Rules:</h4>
+                  <ul className="text-sm text-slate-300 space-y-2">
+                    <li className="flex gap-2"><span>•</span> <span>Starting bids are 70% of market value.</span></li>
+                    <li className="flex gap-2"><span>•</span> <span>Highest bidder wins property instantly.</span></li>
+                    <li className="flex gap-2"><span>•</span> <span>Main game starts after all properties are auctioned.</span></li>
                   </ul>
                 </div>
               </div>
               <DialogFooter>
                 <Button 
                   onClick={handleStartGame}
-                  className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold"
+                  className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-6 text-lg"
                 >
-                  Start Pre-Auction
+                  Start Bidding
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
       </div>
+
       {/* Bottom Drawer: Game Log */}
       <Drawer open={isLogOpen} onOpenChange={setIsLogOpen}>
-        <DrawerContent className="max-h-[60vh]">
+        <DrawerContent className="max-h-[70vh] bg-slate-900 border-t border-slate-700">
+          <div className="mx-auto w-12 h-1 bg-slate-700 rounded-full my-4" />
           <DrawerHeader>
-            <DrawerTitle>Game Log</DrawerTitle>
+            <DrawerTitle className="text-white flex items-center justify-center gap-2 text-xl">
+              📜 Monopoly Game History
+            </DrawerTitle>
           </DrawerHeader>
-          <div className="p-4 overflow-y-auto">
+          <div className="p-4 overflow-y-auto custom-scrollbar">
             <GameLog events={gameState.gameEvents} />
           </div>
         </DrawerContent>

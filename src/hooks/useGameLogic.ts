@@ -409,10 +409,15 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
     const property = gameState.properties.find(p => p.id === propertyId);
     if (!property || property.isOwned || property.isInAuction) return;
 
+    const duration = gameState.settings.auctionDuration;
+    const startTime = Date.now();
+    const endTimestamp = startTime + (duration * 1000);
+
     const auction: Auction = {
       propertyId,
-      startTime: Date.now(),
-      duration: gameState.settings.auctionDuration,
+      startTime,
+      duration,
+      endTimestamp,
       currentBid: Math.round(property.currentValue * 0.7), // Start at 70% of value
       highestBidder: null,
       bids: [],
@@ -427,7 +432,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
       )
     }));
 
-    setAuctionTimer(gameState.settings.auctionDuration);
+    setAuctionTimer(duration);
   }, [gameState.properties, gameState.settings.auctionDuration]);
 
   // Handle dice roll and player movement
@@ -519,16 +524,17 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
   useEffect(() => {
     let interval: NodeJS.Timeout;
     
-    if (gameState.currentAuction && auctionTimer !== null && auctionTimer > 0) {
+    if (gameState.currentAuction) {
       interval = setInterval(() => {
-        setAuctionTimer(prev => (prev !== null && prev > 0 ? prev - 1 : 0));
+        const remaining = Math.max(0, Math.floor((gameState.currentAuction!.endTimestamp - Date.now()) / 1000));
+        setAuctionTimer(remaining);
       }, 1000);
     }
 
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [gameState.currentAuction, auctionTimer === null]);
+  }, [gameState.currentAuction?.endTimestamp]);
 
   // Handle auction end when timer reaches 0
   useEffect(() => {
@@ -553,18 +559,22 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
       timestamp: Date.now()
     };
 
+    const newDuration = Math.max(auctionTimer || 0, 15);
+    const newEndTimestamp = Date.now() + (newDuration * 1000);
+
     setGameState(prev => ({
       ...prev,
       currentAuction: prev.currentAuction ? {
         ...prev.currentAuction,
         currentBid: amount,
         highestBidder: biddingPlayer.name,
+        endTimestamp: newEndTimestamp,
         bids: [...prev.currentAuction.bids, bid]
       } : null
     }));
 
     // Reset timer to give others a chance to bid
-    setAuctionTimer(Math.max(auctionTimer || 0, 15));
+    setAuctionTimer(newDuration);
   }, [gameState.currentAuction, gameState.players, gameState.currentPlayer, auctionTimer]);
 
 

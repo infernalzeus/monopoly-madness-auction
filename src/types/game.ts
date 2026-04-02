@@ -53,6 +53,7 @@ export interface Auction {
   propertyId: string;
   startTime: number;
   duration: number;
+  endTimestamp: number;
   currentBid: number;
   highestBidder: string | null;
   bids: AuctionBid[];

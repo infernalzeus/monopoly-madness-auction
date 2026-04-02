@@ -252,16 +252,16 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
         </div>
 
         {/* Recent bids */}
-        <div className="space-y-2">
-          <h4 className="text-sm font-semibold flex items-center gap-1">
-            <TrendingUp className="w-4 h-4" />
+        <div className="space-y-1 pt-1 border-t border-slate-800">
+          <h4 className="text-[0.65rem] sm:text-xs font-semibold flex items-center gap-1 opacity-70">
+            <TrendingUp className="w-3 h-3" />
             Recent Bids
           </h4>
-          <div className="max-h-32 overflow-y-auto space-y-1">
-            {bids.slice(-5).reverse().map((bid, index) => (
+          <div className="space-y-0.5">
+            {bids.slice(-3).reverse().map((bid, index) => (
               <div
                 key={`${bid.player}-${bid.amount}-${index}`}
-                className="flex justify-between items-center text-sm py-1 px-2 bg-background/30 rounded"
+                className="flex justify-between items-center text-[0.65rem] sm:text-xs py-0.5 px-2 bg-background/30 rounded"
               >
                 <span className={bid.player === currentPlayer ? 'text-primary font-semibold' : 'text-foreground'}>
                   {bid.player}
