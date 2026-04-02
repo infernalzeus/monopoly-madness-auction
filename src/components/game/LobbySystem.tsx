@@ -299,14 +299,14 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                             <Badge 
                               variant="outline" 
                               className={`text-[0.65rem] capitalize ${
-                                game.gameState?.settings?.gameType === 'auction' 
+                                game.gameState?.settings?.auctionsEnabled 
                                   ? 'text-yellow-400 border-yellow-500/50 bg-yellow-500/10' 
-                                  : game.gameState?.settings?.gameType === 'team-up' 
+                                  : game.gameState?.settings?.teamsEnabled 
                                     ? 'text-indigo-400 border-indigo-500/50 bg-indigo-500/10' 
                                     : 'text-cyan-400 border-cyan-500/50 bg-cyan-500/10'
                               }`}
                             >
-                              {game.gameState?.settings?.gameType?.replace('-', ' ') || 'Standard'}
+                              {game.gameState?.settings?.auctionsEnabled ? 'Auction Focus' : game.gameState?.settings?.teamsEnabled ? 'Team Up' : 'Standard'}
                             </Badge>
                           </div>
                         </div>
@@ -466,24 +466,7 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
               <div className="space-y-4">
                 <h3 className="text-lg font-bold text-cyan-300">Game Settings</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-cyan-200 font-semibold">Game Type</Label>
-                    <Select
-                      value={lobbySettings.gameType}
-                      onValueChange={(val: 'auction' | 'team-up' | 'standard') =>
-                        setLobbySettings(prev => ({ ...prev, gameType: val }))
-                      }
-                    >
-                      <SelectTrigger className="bg-slate-700 border-cyan-400/50 text-cyan-100">
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-cyan-400 text-cyan-100">
-                        <SelectItem value="standard">Standard</SelectItem>
-                        <SelectItem value="auction">Auction Focus</SelectItem>
-                        <SelectItem value="team-up">Team Up</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+
                   <div className="space-y-2">
                     <Label className="text-cyan-200 font-semibold">Max Players</Label>
                     <div className="flex gap-2">

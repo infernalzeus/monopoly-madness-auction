@@ -181,7 +181,7 @@ const MonopolyGame: React.FC = () => {
 
   // Determine if current tile has an owned property (not by current player) to enable offers
   const propertyOnTile = gameState.properties.find(p => p.position === currentPlayer.position);
-  const ownedPropertyOnTile = propertyOnTile && propertyOnTile.isOwned && propertyOnTile.owner !== currentPlayer.name ? propertyOnTile : null;
+  const ownedPropertyOnTile = gameState.settings.auctionsEnabled && propertyOnTile && propertyOnTile.isOwned && propertyOnTile.owner !== currentPlayer.name ? propertyOnTile : null;
 
   const handlePropertyClick = (property: Property) => {
     setSelectedProperty(property);
