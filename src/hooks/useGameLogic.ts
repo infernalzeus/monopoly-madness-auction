@@ -28,6 +28,8 @@ const initialGameSettings: GameSettings = {
   passGoReward: 200000, // ₹2 lakh for passing GO
   jailFine: 50000, // ₹50k to get out of jail
   allowPropertyEditing: true,
+  isPrivate: false,
+  gameType: 'standard',
   preAuctionProperties: [],
   customPropertyLists: {
     'brown_group': ['prop-1', 'prop-3'],
@@ -488,14 +490,15 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
 
   
 
-  const placeBid = useCallback((amount: number) => {
+  const placeBid = useCallback((amount: number, bidderId?: string) => {
     if (!gameState.currentAuction) return;
 
-    const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayer);
-    if (!currentPlayer || currentPlayer.balance < amount) return;
+    const biddingPlayerId = bidderId || localPlayerId || gameState.currentPlayer;
+    const biddingPlayer = gameState.players.find(p => p.id === biddingPlayerId);
+    if (!biddingPlayer || biddingPlayer.balance < amount) return;
 
     const bid: AuctionBid = {
-      player: currentPlayer.name,
+      player: biddingPlayer.name,
       amount,
       timestamp: Date.now()
     };
@@ -505,7 +508,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
       currentAuction: prev.currentAuction ? {
         ...prev.currentAuction,
         currentBid: amount,
-        highestBidder: currentPlayer.name,
+        highestBidder: biddingPlayer.name,
         bids: [...prev.currentAuction.bids, bid]
       } : null
     }));
@@ -834,18 +837,59 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
   }, [gameState.currentPlayer, gameState.players]);
 
   const joinTeam = useCallback((teamId: string) => {
-    const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayer);
-    if (!currentPlayer) return;
+    const joinerId = localPlayerId || gameState.currentPlayer;
+    const cp = gameState.players.find(p => p.id === joinerId);
+    
+    if (!cp) return;
 
-    setGameState(prev => ({
-      ...prev,
-      teams: prev.teams.map(team =>
-        team.id === teamId && team.members.length < 4
-          ? { ...team, members: [...team.members, currentPlayer.id] }
-          : team
-      )
-    }));
-  }, [gameState.currentPlayer, gameState.players]);
+    setGameState(prev => {
+      const team = prev.teams.find(t => t.id === teamId);
+      if (!team) return prev;
+      
+      const otherMemberId = team.members[0];
+      const other = prev.players.find(p => p.id === otherMemberId);
+      if (!other) return prev;
+
+      let primary: Player, secondary: Player;
+      if (cp.balance > other.balance) {
+         primary = cp;
+         secondary = other;
+      } else {
+         primary = other;
+         secondary = cp;
+      }
+
+      const newProperties = prev.properties.map(p => {
+         if (p.owner === secondary.name) {
+            return { ...p, owner: primary.name };
+         }
+         return p;
+      });
+
+      const newPlayers = prev.players.map(p => {
+         if (p.id === primary.id) {
+            return { ...p, balance: primary.balance + secondary.balance, properties: Array.from(new Set([...primary.properties, ...secondary.properties])) };
+         }
+         if (p.id === secondary.id) {
+            return { ...p, balance: 0, properties: [], isSpectator: true };
+         }
+         return p;
+      });
+
+      const newTeams = prev.teams.map(t => 
+        t.id === teamId && !t.members.includes(cp.id) 
+          ? { ...t, members: [...t.members, cp.id] } 
+          : t
+      );
+
+      return {
+         ...prev,
+         properties: newProperties,
+         players: newPlayers,
+         teams: newTeams
+      };
+    });
+  }, [localPlayerId, gameState.currentPlayer, gameState.players]);
 
   const updateSettings = useCallback((newSettings: Partial<GameSettings>) => {
     setGameState(prev => ({

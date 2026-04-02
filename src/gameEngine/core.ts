@@ -23,9 +23,9 @@ export const advanceTurn = (state: GameState): GameState => {
   const currentIndex = state.players.findIndex(p => p.id === state.currentPlayer);
   let nextIndex = (currentIndex + 1) % playerCount;
   
-  // Skip inactive players
+  // Skip inactive players and spectators
   for (let i = 0; i < playerCount; i++) {
-    if (state.players[nextIndex].isActive) break;
+    if (state.players[nextIndex].isActive && !state.players[nextIndex].isSpectator) break;
     nextIndex = (nextIndex + 1) % playerCount;
   }
   
@@ -145,7 +145,7 @@ export const handlePropertyPurchase = (state: GameState, propertyId: string, pla
 };
 
 export const checkWinCondition = (state: GameState): GameState => {
-  const activePlayers = state.players.filter(p => p.isActive);
+  const activePlayers = state.players.filter(p => p.isActive && !p.isSpectator);
   if (activePlayers.length === 1 && !state.winnerId) {
     return { ...state, winnerId: activePlayers[0].id, gamePhase: 'ended' };
   }

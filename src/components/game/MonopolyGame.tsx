@@ -44,6 +44,7 @@ const MonopolyGame: React.FC = () => {
   const [setupMortgageEnabled, setSetupMortgageEnabled] = useState(true);
   const [setupTradingEnabled, setSetupTradingEnabled] = useState(false);
   const [setupAuctionDuration, setSetupAuctionDuration] = useState(120);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
   
   const {
     gameState,
@@ -377,10 +378,32 @@ const MonopolyGame: React.FC = () => {
               </Badge>
             ))}
           </div>
+          {isLobbyOwner && gameState.settings.allowPropertyEditing && (
+            <div className="mt-8 flex justify-center">
+              <Button onClick={() => setIsEditorOpen(true)} className="bg-purple-600 hover:bg-purple-700 font-bold text-lg px-8 py-4 shadow-xl border border-purple-400/50 transition-all hover:scale-105">
+                ✏️ Open Property Editor
+              </Button>
+            </div>
+          )}
           <p className="mt-12 text-slate-400 italic">
             The game will start automatically when the lobby limit is reached.
           </p>
         </div>
+        
+        <GameConsole
+           isOpen={isEditorOpen}
+           onClose={() => setIsEditorOpen(false)}
+           properties={gameState.properties}
+           customPropertyLists={gameState.settings.customPropertyLists || {}}
+           preAuctionProperties={gameState.settings.preAuctionProperties || []}
+           gameMode={gameState.settings.gameMode}
+           onUpdateProperty={updateProperty}
+           onUpdatePropertyList={updatePropertyList}
+           onAddPropertyToList={addPropertyToList}
+           onRemovePropertyFromList={removePropertyFromList}
+           onSetPreAuctionProperties={setPreAuctionProperties}
+           onSetGameMode={setGameMode}
+        />
       </div>
     );
   }

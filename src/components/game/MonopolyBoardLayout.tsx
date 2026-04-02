@@ -135,7 +135,7 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
           style={{ gridRow: row, gridColumn: col }}
         >
           {icon}
-          <span className="text-[0.4rem] sm:text-[0.6rem] md:text-xs font-bold text-center mt-1 uppercase leading-tight line-clamp-2">{property.name}</span>
+          <span className="text-[0.5rem] sm:text-xs md:text-sm font-bold text-center mt-1 uppercase leading-tight line-clamp-2">{property.name}</span>
           {playersHere.length > 0 && (
             <div className="absolute inset-0 flex justify-center items-center flex-wrap gap-0.5 sm:gap-1 p-0.5 overflow-hidden z-20">
               {playersHere.map((player, idx) => (
@@ -177,8 +177,8 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
         {property.colorGroup && <div className={`${colorBarClass} ${colorGroupClass} border-slate-800 z-0`} />}
         
         <div className={`flex flex-col justify-between h-full w-full z-10 relative ${padClass}`}>
-          <div className="flex flex-col items-center">
-            <span className="text-[0.40rem] sm:text-[0.55rem] md:text-[0.65rem] font-bold text-slate-200 leading-[1.1] text-center uppercase break-words w-full px-px">
+          <div className="flex flex-col items-center justify-center h-full">
+            <span className="text-[0.45rem] sm:text-[0.6rem] md:text-xs lg:text-sm font-bold text-slate-200 leading-tight text-center uppercase break-words w-full px-1 flex-1 flex items-center justify-center">
               {property.name}
             </span>
           </div>
@@ -197,7 +197,7 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
               </div>
             )}
             
-            <span className="text-[0.4rem] sm:text-[0.55rem] md:text-xs font-bold text-slate-300 tracking-tighter">
+            <span className="text-[0.45rem] sm:text-[0.6rem] md:text-xs lg:text-sm font-bold text-slate-300 tracking-tighter mt-auto">
               ₹{(property.baseValue / 1000)}K
             </span>
           </div>

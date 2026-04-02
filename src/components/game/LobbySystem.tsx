@@ -438,7 +438,8 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                       </div>
                     </div>
                     <Switch
-                      checked={lobbySettings.teamsEnabled}
+                      disabled={lobbySettings.maxPlayers <= 2}
+                      checked={lobbySettings.maxPlayers > 2 ? lobbySettings.teamsEnabled : false}
                       onCheckedChange={(checked) =>
                         setLobbySettings(prev => ({ ...prev, teamsEnabled: checked }))
                       }

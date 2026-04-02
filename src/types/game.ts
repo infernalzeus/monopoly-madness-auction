@@ -32,6 +32,7 @@ export interface Player {
   teamId?: string;
   pieceIcon: string;
   isBot?: boolean;
+  isSpectator?: boolean;
 }
 
 export interface Team {
