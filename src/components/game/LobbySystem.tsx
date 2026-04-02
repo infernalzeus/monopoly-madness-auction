@@ -486,19 +486,19 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                   </div>
                   <div className="space-y-2">
                     <Label className="text-cyan-200 font-semibold">Max Players</Label>
-                    <Input
-                      type="number"
-                      min="2"
-                      max="8"
-                      value={lobbySettings.maxPlayers}
-                      onChange={(e) =>
-                        setLobbySettings(prev => ({
-                          ...prev,
-                          maxPlayers: parseInt(e.target.value) || 4
-                        }))
-                      }
-                      className="bg-slate-700 border-cyan-400/50 text-cyan-100"
-                    />
+                    <div className="flex gap-2">
+                      {[2, 3, 4].map(num => (
+                        <Button
+                          key={num}
+                          type="button"
+                          variant={lobbySettings.maxPlayers === num ? "default" : "outline"}
+                          className={`flex-1 ${lobbySettings.maxPlayers === num ? 'bg-cyan-600 hover:bg-cyan-700 text-white border-transparent' : 'border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white'}`}
+                          onClick={() => setLobbySettings(prev => ({ ...prev, maxPlayers: num }))}
+                        >
+                          {num} Players
+                        </Button>
+                      ))}
+                    </div>
                   </div>
                   <div className="col-span-full md:col-span-2">
                     <Label className="text-cyan-200 font-semibold">Starting Balance</Label>

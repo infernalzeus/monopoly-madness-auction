@@ -393,21 +393,7 @@ const MonopolyGame: React.FC = () => {
         onDismiss={handleDismissEvent}
       />
 
-      {/* Dialogs */}
-      {myPendingRentData && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 rounded-xl shadow-2xl max-w-md w-full border border-slate-700">
-            <RentPaymentDialog
-              property={myPendingRentData.property}
-              amount={myPendingRentData.amount}
-              owner={myPendingRentData.owner}
-              onPayRent={payRent}
-              onSkipRent={skipRent}
-              currentPlayerBalance={myPlayer.balance || 0}
-            />
-          </div>
-        </div>
-      )}
+      {/* Dialogs & Overlays removed from global space to board space */}
       
       {/* Game Header */}
       <Card className="mb-6 bg-slate-900 border border-slate-800 shadow-md">
@@ -454,9 +440,10 @@ const MonopolyGame: React.FC = () => {
       </Card>
 
       {/* Main Game Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Game Board and Dice */}
-        <div className="lg:col-span-2 space-y-6">
+      <div className="flex flex-col gap-6">
+        {/* Top/Main Area - Game Board and Dice */}
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
+          <div className="w-full lg:w-3/4 flex justify-center">
           <MonopolyBoardLayout
             properties={gameState.properties}
             players={gameState.players}
@@ -472,7 +459,52 @@ const MonopolyGame: React.FC = () => {
             canEndTurn={gameState.turnState === 'completed' && isMyTurn}
             turnState={gameState.turnState}
             playerColor={currentPlayer?.color || '#DC2626'}
-          />
+          >
+            {(myPendingRentData || currentAuctionData || pendingPurchaseData || ownedPropertyOnTile) && (
+              <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 rounded-xl backdrop-blur-sm">
+                <div className="w-full max-w-md">
+                  {myPendingRentData ? (
+                    <div className="bg-slate-900 rounded-xl shadow-2xl w-full border border-slate-700">
+                      <RentPaymentDialog
+                        property={myPendingRentData.property}
+                        amount={myPendingRentData.amount}
+                        owner={myPendingRentData.owner}
+                        onPayRent={payRent}
+                        onSkipRent={skipRent}
+                        currentPlayerBalance={myPlayer.balance || 0}
+                      />
+                    </div>
+                  ) : (
+                    <AuctionPanel
+                      currentAuction={currentAuctionData}
+                      pendingPurchase={pendingPurchaseData}
+                      ownedPropertyOnTile={ownedPropertyOnTile}
+                      onPlaceBid={placeBid}
+                      onBuyNow={() => {
+                        if (gameState.pendingPurchase) {
+                          purchaseProperty(gameState.pendingPurchase.propertyId);
+                        }
+                      }}
+                      onSkipPurchase={() => skipPurchase()}
+                      onStartAuction={(pid) => startAuction(pid)}
+                      onMakeOffer={(amount) => {
+                        if (ownedPropertyOnTile) {
+                          makeOffer(ownedPropertyOnTile.id, ownedPropertyOnTile.owner as string, amount);
+                        }
+                      }}
+                      players={gameState.players.map(p => p.name)}
+                      currentPlayer={myPlayer.name}
+                      auctionsEnabled={gameState.settings.auctionsEnabled}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+          </MonopolyBoardLayout>
+          </div>
+          
+          <div className="w-full lg:w-1/4 space-y-6">
+
 
           {/* Game Mode Indicator */}
           <div className="flex justify-center">
@@ -620,10 +652,11 @@ const MonopolyGame: React.FC = () => {
               </CardContent>
             </Card>
           )}
+          </div>
         </div>
 
-        {/* Right Column - Control Panels */}
-        <div className="space-y-6">
+        {/* Bottom Section - Control Panels */}
+        <div className="flex flex-col gap-6">
           {/* Only show relevant panels based on game state */}
           {gameState.gamePhase === 'playing' && (
             <>
@@ -644,31 +677,6 @@ const MonopolyGame: React.FC = () => {
                   }}
                   onStartNextAuction={handleStartNextAuction}
                   onFinishPreAuction={handleEndPreAuction}
-                />
-              )}
-
-              {/* Property Actions / Auction Panel conditionally shown */}
-              {(currentAuctionData || pendingPurchaseData || ownedPropertyOnTile) && (
-                <AuctionPanel
-                  currentAuction={currentAuctionData}
-                  pendingPurchase={pendingPurchaseData}
-                  ownedPropertyOnTile={ownedPropertyOnTile}
-                  onPlaceBid={placeBid}
-                  onBuyNow={() => {
-                    if (gameState.pendingPurchase) {
-                      purchaseProperty(gameState.pendingPurchase.propertyId);
-                    }
-                  }}
-                  onSkipPurchase={() => skipPurchase()}
-                  onStartAuction={(pid) => startAuction(pid)}
-                  onMakeOffer={(amount) => {
-                    if (ownedPropertyOnTile) {
-                      makeOffer(ownedPropertyOnTile.id, ownedPropertyOnTile.owner as string, amount);
-                    }
-                  }}
-                  players={gameState.players.map(p => p.name)}
-                  currentPlayer={myPlayer.name}
-                  auctionsEnabled={gameState.settings.auctionsEnabled}
                 />
               )}
 
@@ -733,20 +741,22 @@ const MonopolyGame: React.FC = () => {
                 </CardContent>
               </Card>
 
-              {/* Player Panel */}
-              <PlayerPanel
-                currentPlayer={myPlayer}
-                allPlayers={gameState.players}
-                teams={gameState.teams}
-                ownedProperties={myOwnedProperties}
-                onMortgage={mortgageProperty}
-                onUnmortgage={unmortgageProperty}
-                onSell={handleSellProperty}
-                onTrade={handleTradeOffer}
-                onJoinTeam={joinTeam}
-                onCreateTeam={createTeam}
-                canTeam={gameState.settings.teamsEnabled}
-              />
+              {/* Player Panel - Only show if Teams mode is enabled (per user instructions "Only if auction/team/trade mode is selected") */}
+              {(gameState.settings as any).gameType === 'team-up' || gameState.settings.teamsEnabled ? (
+                <PlayerPanel
+                  currentPlayer={myPlayer}
+                  allPlayers={gameState.players}
+                  teams={gameState.teams}
+                  ownedProperties={myOwnedProperties}
+                  onMortgage={mortgageProperty}
+                  onUnmortgage={unmortgageProperty}
+                  onSell={handleSellProperty}
+                  onTrade={handleTradeOffer}
+                  onJoinTeam={joinTeam}
+                  onCreateTeam={createTeam}
+                  canTeam={gameState.settings.teamsEnabled}
+                />
+              ) : null}
 
               {/* Trading System */}
               {gameState.settings.tradingEnabled && (

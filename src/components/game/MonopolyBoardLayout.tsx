@@ -20,6 +20,7 @@ interface MonopolyBoardLayoutProps {
   canEndTurn?: boolean;
   turnState?: string;
   playerColor: string;
+  children?: React.ReactNode;
 }
 
 const AnimatedToken: React.FC<{ 
@@ -72,7 +73,8 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
   canRoll,
   canEndTurn,
   turnState,
-  playerColor
+  playerColor,
+  children
 }) => {
   const [playerPositions, setPlayerPositions] = useState<Record<string, number>>({});
   const [isMoving, setIsMoving] = useState<Record<string, boolean>>({});
@@ -228,19 +230,21 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
         {Array.from({ length: 40 }).map((_, i) => renderCell(i))}
         
         {/* Central Space */}
-        <div className="bg-slate-950 flex items-center justify-center p-2 sm:p-6 lg:p-12 shadow-inner border border-slate-800" style={{ gridRow: '2 / 11', gridColumn: '2 / 11' }}>
-          <CentralDisplay
-             currentEvent={currentEvent}
-             currentPlayer={currentPlayer}
-             lastDiceRoll={lastDiceRoll}
-             isRolling={isRolling}
-             onRollDice={onRollDice}
-             onEndTurn={onEndTurn}
-             canRoll={canRoll}
-             canEndTurn={canEndTurn}
-             turnState={turnState}
-             playerColor={playerColor}
-          />
+        <div className="bg-slate-950 flex flex-col items-center justify-center p-2 sm:p-4 lg:p-6 shadow-inner border border-slate-800 relative" style={{ gridRow: '2 / 11', gridColumn: '2 / 11' }}>
+          {children || (
+            <CentralDisplay
+               currentEvent={currentEvent}
+               currentPlayer={currentPlayer}
+               lastDiceRoll={lastDiceRoll}
+               isRolling={isRolling}
+               onRollDice={onRollDice}
+               onEndTurn={onEndTurn}
+               canRoll={canRoll}
+               canEndTurn={canEndTurn}
+               turnState={turnState}
+               playerColor={playerColor}
+            />
+          )}
         </div>
       </div>
     </div>
