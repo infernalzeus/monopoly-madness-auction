@@ -484,8 +484,8 @@ const MonopolyGame: React.FC = () => {
             playerColor={currentPlayer?.color || '#DC2626'}
           >
             {(myPendingRentData || currentAuctionData || pendingPurchaseData || ownedPropertyOnTile) && (
-              <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 rounded-xl backdrop-blur-sm">
-                <div className="w-full max-w-md">
+              <div className="absolute inset-0 z-50 flex items-center justify-center p-1 sm:p-4 bg-slate-950/90 rounded-sm backdrop-blur-sm overflow-y-auto overflow-x-hidden">
+                <div className="w-full max-w-sm h-fit">
                   {myPendingRentData ? (
                     <div className="bg-slate-900 rounded-xl shadow-2xl w-full border border-slate-700">
                       <RentPaymentDialog

@@ -465,58 +465,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
     addGameEvent('move', 'Game Master', 'randomized all property values');
   }, [addGameEvent]);
 
-  // Auction timer effect
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    
-    if (gameState.currentAuction && auctionTimer !== null && auctionTimer > 0) {
-      interval = setInterval(() => {
-        setAuctionTimer(prev => {
-          if (prev !== null && prev > 0) {
-            return prev - 1;
-          }
-          // Auto-end auction when timer reaches 0
-          endAuction();
-          return null;
-        });
-      }, 1000);
-    }
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [gameState.currentAuction, auctionTimer]);
-
-
   
-
-  const placeBid = useCallback((amount: number, bidderId?: string) => {
-    if (!gameState.currentAuction) return;
-
-    const biddingPlayerId = bidderId || localPlayerId || gameState.currentPlayer;
-    const biddingPlayer = gameState.players.find(p => p.id === biddingPlayerId);
-    if (!biddingPlayer || biddingPlayer.balance < amount) return;
-
-    const bid: AuctionBid = {
-      player: biddingPlayer.name,
-      amount,
-      timestamp: Date.now()
-    };
-
-    setGameState(prev => ({
-      ...prev,
-      currentAuction: prev.currentAuction ? {
-        ...prev.currentAuction,
-        currentBid: amount,
-        highestBidder: biddingPlayer.name,
-        bids: [...prev.currentAuction.bids, bid]
-      } : null
-    }));
-
-    // Reset timer to give others a chance to bid
-    setAuctionTimer(Math.max(auctionTimer || 0, 15));
-  }, [gameState.currentAuction, gameState.players, gameState.currentPlayer, auctionTimer]);
-
   const endAuction = useCallback(() => {
     if (!gameState.currentAuction) return;
 
@@ -565,6 +514,60 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
     // Always advance turn after auction ends (double-roll rule disabled)
     advanceTurn();
   }, [gameState.currentAuction]);
+
+  // Auction timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (gameState.currentAuction && auctionTimer !== null && auctionTimer > 0) {
+      interval = setInterval(() => {
+        setAuctionTimer(prev => (prev !== null && prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [gameState.currentAuction, auctionTimer === null]);
+
+  // Handle auction end when timer reaches 0
+  useEffect(() => {
+    if (auctionTimer === 0 && gameState.currentAuction) {
+      endAuction();
+    }
+  }, [auctionTimer, gameState.currentAuction, endAuction]);
+
+
+  
+
+  const placeBid = useCallback((amount: number, bidderId?: string) => {
+    if (!gameState.currentAuction) return;
+
+    const biddingPlayerId = bidderId || localPlayerId || gameState.currentPlayer;
+    const biddingPlayer = gameState.players.find(p => p.id === biddingPlayerId);
+    if (!biddingPlayer || biddingPlayer.balance < amount) return;
+
+    const bid: AuctionBid = {
+      player: biddingPlayer.name,
+      amount,
+      timestamp: Date.now()
+    };
+
+    setGameState(prev => ({
+      ...prev,
+      currentAuction: prev.currentAuction ? {
+        ...prev.currentAuction,
+        currentBid: amount,
+        highestBidder: biddingPlayer.name,
+        bids: [...prev.currentAuction.bids, bid]
+      } : null
+    }));
+
+    // Reset timer to give others a chance to bid
+    setAuctionTimer(Math.max(auctionTimer || 0, 15));
+  }, [gameState.currentAuction, gameState.players, gameState.currentPlayer, auctionTimer]);
+
+
 
   const purchaseProperty = useCallback((propertyId: string) => {
     setGameState((prev: GameState) => {

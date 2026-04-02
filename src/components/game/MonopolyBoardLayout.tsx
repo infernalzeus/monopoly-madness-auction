@@ -177,8 +177,8 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
         {property.colorGroup && <div className={`${colorBarClass} ${colorGroupClass} border-slate-800 z-0`} />}
         
         <div className={`flex flex-col justify-between h-full w-full z-10 relative ${padClass}`}>
-          <div className="flex flex-col items-center justify-center h-full">
-            <span className="text-[0.45rem] sm:text-[0.6rem] md:text-xs lg:text-sm font-bold text-slate-200 leading-tight text-center uppercase break-words w-full px-1 flex-1 flex items-center justify-center">
+          <div className="flex flex-col items-center justify-center h-full overflow-hidden">
+            <span className="text-[0.38rem] sm:text-[0.6rem] md:text-xs lg:text-sm font-bold text-slate-200 leading-tight text-center uppercase break-words hyphens-auto w-full px-0.5 flex-1 flex items-center justify-center overflow-hidden">
               {property.name}
             </span>
           </div>
