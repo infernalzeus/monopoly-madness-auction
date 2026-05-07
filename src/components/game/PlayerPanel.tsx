@@ -7,44 +7,33 @@ import {
   User, 
   DollarSign, 
   Home, 
-  Handshake, 
-  Banknote,
-  Users
+  Banknote 
 } from 'lucide-react';
-import { Player, Property, Team } from '@/types/game';
+import { Player, Property } from '@/types/game';
 
 interface PlayerPanelProps {
   currentPlayer: Player;
   allPlayers: Player[];
-  teams: Team[];
   ownedProperties: Property[];
   onMortgage: (propertyId: string) => void;
   onUnmortgage?: (propertyId: string) => void;
   onSell: (propertyId: string, amount: number) => void;
   onTrade: (toPlayer: string, offeredProps: string[], requestedProps: string[]) => void;
-  onJoinTeam: (teamId: string) => void;
-  onCreateTeam: (teamName: string) => void;
-  canTeam: boolean;
 }
 
 const PlayerPanel: React.FC<PlayerPanelProps> = ({
   currentPlayer,
   allPlayers,
-  teams,
   ownedProperties,
   onMortgage,
   onUnmortgage,
   onSell,
   onTrade,
-  onJoinTeam,
-  onCreateTeam,
-  canTeam
 }) => {
   const [sellAmount, setSellAmount] = useState<string>('');
   const [selectedProperty, setSelectedProperty] = useState<string>('');
-  const [newTeamName, setNewTeamName] = useState<string>('');
 
-  const playerTeam = teams.find(team => team.members.includes(currentPlayer.id));
+
   const netWorth = currentPlayer.balance + ownedProperties.reduce((sum, prop) => sum + prop.currentValue, 0);
 
   return (
@@ -55,11 +44,6 @@ const PlayerPanel: React.FC<PlayerPanelProps> = ({
             <User className="w-5 h-5 text-gray-400" />
             {currentPlayer.name}
           </div>
-          {playerTeam && (
-            <Badge style={{ backgroundColor: playerTeam.color }} className="text-white">
-              Team {playerTeam.name}
-            </Badge>
-          )}
         </CardTitle>
       </CardHeader>
       
@@ -262,72 +246,6 @@ const PlayerPanel: React.FC<PlayerPanelProps> = ({
                 Sell
               </Button>
             </div>
-          </div>
-        )}
-
-        {/* Team Management */}
-        {canTeam && (
-          <div className="space-y-3">
-            <h3 className="font-semibold text-white flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Team Up
-            </h3>
-            
-            {!playerTeam ? (
-              <div className="space-y-2">
-                {/* Join existing team */}
-                <div className="space-y-1">
-                  {teams.filter(team => team.members.length < 4).map((team) => (
-                    <Button
-                      key={team.id}
-                      onClick={() => onJoinTeam(team.id)}
-                      variant="outline"
-                      size="sm"
-                      className="w-full justify-between text-xs"
-                    >
-                      <span>Join {team.name}</span>
-                      <Badge variant="secondary" className="text-xs">
-                        {team.members.length}/4
-                      </Badge>
-                    </Button>
-                  ))}
-                </div>
-                
-                {/* Create new team */}
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Team name"
-                    value={newTeamName}
-                    onChange={(e) => setNewTeamName(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button
-                    onClick={() => {
-                      if (newTeamName.trim()) {
-                        onCreateTeam(newTeamName.trim());
-                        setNewTeamName('');
-                      }
-                    }}
-                    size="sm"
-                    disabled={!newTeamName.trim()}
-                  >
-                    Create
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-slate-800/50 rounded-lg p-3">
-                <div className="text-sm font-medium text-white mb-2">
-                  Team {playerTeam.name}
-                </div>
-                <div className="text-xs text-slate-400">
-                  Members: {playerTeam.members.length}/4
-                </div>
-                <div className="text-xs text-slate-400">
-                  Shared Balance: ₹{playerTeam.sharedBalance.toLocaleString()}
-                </div>
-              </div>
-            )}
           </div>
         )}
 

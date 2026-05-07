@@ -63,10 +63,30 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                                 x={x} y={y}
                                 width={width}
                                 height={height}
-                                fill={isCorner ? '#3a2a1a' : (isDiscovered ? (property?.isOwned ? '#e6fffa' : '#ffffff') : '#4a5568')}
+                                fill={isCorner 
+                                    ? (i === 0 ? '#ffffff' : (i === 10 ? '#e2e8f0' : (i === 20 ? '#ffffff' : '#ffffff'))) 
+                                    : (isDiscovered ? (property?.isOwned ? '#e6fffa' : '#ffffff') : '#4a5568')}
                                 stroke="#3a2a1a"
-                                strokeWidth="1"
+                                strokeWidth={isCorner ? "2" : "1"}
                             />
+                            
+                            {/* Corner Decorative Elements */}
+                            {isCorner && (
+                                <>
+                                    {i === 0 && ( // GO
+                                        <polygon points={`${x+20},${y+height-20} ${x+width-20},${y+height/2} ${x+20},${y+20}`} fill="#10b981" opacity="0.2" />
+                                    )}
+                                    {i === 30 && ( // GO TO JAIL
+                                        <rect x={x} y={y} width={width} height={height} fill="#ef4444" opacity="0.1" />
+                                    )}
+                                    {i === 20 && ( // FREE PARKING
+                                        <circle cx={x+width/2} cy={y+height/2} r={width/3} fill="#f59e0b" opacity="0.1" />
+                                    )}
+                                    {i === 10 && ( // JAIL
+                                        <rect x={x} y={y} width={width/3} height={height} fill="#64748b" opacity="0.2" />
+                                    )}
+                                </>
+                            )}
                             
                             {/* Color Bar */}
                             {isDiscovered && property?.colorGroup && !isCorner && (
@@ -83,15 +103,20 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                             {/* Label */}
                             <text
                                 x={x + width/2}
-                                y={y + (isCorner ? height/2 + 5 : (i < 10 ? 35 : (i > 20 && i < 30 ? 60 : 40)))}
-                                fontSize={isCorner ? "16" : "9"}
-                                fill={isDiscovered ? (isCorner ? "#f5e8c7" : "#1a202c") : "#cbd5e0"}
+                                y={y + (isCorner ? (i === 10 ? height - 30 : height/2 + 5) : (i < 10 ? 35 : (i > 20 && i < 30 ? 60 : 40)))}
+                                fontSize={isCorner ? "14" : "9"}
+                                fill={isDiscovered ? "#1a202c" : "#cbd5e0"}
                                 textAnchor="middle"
                                 fontWeight="bold"
                                 className="pointer-events-none uppercase tracking-tighter"
                             >
                                 {isDiscovered ? (property?.name || i) : '???'}
                             </text>
+                            
+                            {/* Additional Corner Text */}
+                            {isCorner && i === 10 && (
+                                <text x={x+width/2} y={y+25} fontSize="10" fill="#64748b" textAnchor="middle" fontWeight="black" className="pointer-events-none">VISITING</text>
+                            )}
 
                             {/* Value */}
                             {isDiscovered && property?.type === 'property' && !isCorner && (

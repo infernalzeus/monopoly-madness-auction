@@ -1056,17 +1056,20 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
     );
   }, [gameState.players, gameState.currentPlayer, addGameEvent]);
 
-  const acceptTradeOffer = useCallback((offerId: string) => {
+  const acceptTradeOffer = useCallback((offerId: string, acceptorName?: string) => {
     const offer = gameState.tradeOffers.find(o => o.id === offerId);
     if (!offer || offer.status !== 'pending') return;
 
+    // Use provided acceptorName, or the intended toPlayer if not provided
+    const actualAcceptor = acceptorName || offer.toPlayer;
+
     setGameState(prev => {
       const newProperties = prev.properties.map(prop => {
-        // Transfer offered properties to the recipient
+        // Transfer offered properties to the actual acceptor
         if (offer.offeredProperties.includes(prop.id)) {
-          return { ...prop, owner: offer.toPlayer };
+          return { ...prop, owner: actualAcceptor };
         }
-        // Transfer requested properties to the offerer
+        // Transfer requested properties from the actual acceptor to the offerer
         if (offer.requestedProperties.includes(prop.id)) {
           return { ...prop, owner: offer.fromPlayer };
         }
@@ -1084,7 +1087,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
             ]
           };
         }
-        if (player.name === offer.toPlayer) {
+        if (player.name === actualAcceptor) {
           return {
             ...player,
             balance: player.balance + offer.offeredCash - offer.requestedCash,
@@ -1102,12 +1105,12 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
         properties: newProperties,
         players: newPlayers,
         tradeOffers: prev.tradeOffers.map(o => 
-          o.id === offerId ? { ...o, status: 'accepted' as const } : o
+          o.id === offerId ? { ...o, status: 'accepted' as const, toPlayer: actualAcceptor } : o
         )
       };
     });
 
-    addGameEvent('trade', offer.toPlayer, `accepted trade from ${offer.fromPlayer}`);
+    addGameEvent('trade', actualAcceptor, `accepted trade from ${offer.fromPlayer}`);
   }, [gameState.tradeOffers, gameState.properties, gameState.players, addGameEvent]);
 
   const rejectTradeOffer = useCallback((offerId: string) => {

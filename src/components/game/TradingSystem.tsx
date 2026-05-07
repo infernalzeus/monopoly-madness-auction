@@ -21,7 +21,7 @@ interface TradingSystemProps {
   ownedProperties: Property[];
   tradeOffers: TradeOffer[];
   onCreateTradeOffer: (toPlayer: string, offeredProperties: string[], requestedProperties: string[], offeredCash: number, requestedCash: number) => void;
-  onAcceptTradeOffer: (offerId: string) => void;
+  onAcceptTradeOffer: (offerId: string, acceptorName?: string) => void;
   onRejectTradeOffer: (offerId: string) => void;
   onPlaceTradeBid: (offerId: string, bidAmount: number) => void;
 }
@@ -252,23 +252,33 @@ const TradingSystem: React.FC<TradingSystemProps> = ({
                   </div>
                 </div>
 
-                {offer.toPlayer === currentPlayer.name && offer.status === 'pending' && (
-                  <div className="flex gap-2 mt-3">
-                    <Button
-                      onClick={() => onAcceptTradeOffer(offer.id)}
-                      size="sm"
-                      className="bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      Accept
-                    </Button>
-                    <Button
-                      onClick={() => onRejectTradeOffer(offer.id)}
-                      size="sm"
-                      variant="outline"
-                      className="border-red-400 text-red-300 hover:bg-red-500/20"
-                    >
-                      Reject
-                    </Button>
+                {offer.fromPlayer !== currentPlayer.name && offer.status === 'pending' && (
+                  <div className="flex flex-col gap-2 mt-3">
+                    {offer.toPlayer !== currentPlayer.name && (
+                      <div className="text-[10px] text-purple-400 italic mb-1">
+                        Originally for {offer.toPlayer} - You can also fulfill this trade!
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => onAcceptTradeOffer(offer.id, currentPlayer.name)}
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 text-white flex-1"
+                        disabled={offer.requestedProperties.some(propId => !ownedProperties.find(p => p.id === propId))}
+                      >
+                        {offer.toPlayer === currentPlayer.name ? 'Accept' : 'Accept Trade'}
+                      </Button>
+                      {(offer.toPlayer === currentPlayer.name) && (
+                        <Button
+                          onClick={() => onRejectTradeOffer(offer.id)}
+                          size="sm"
+                          variant="outline"
+                          className="border-red-400 text-red-300 hover:bg-red-500/20 flex-1"
+                        >
+                          Reject
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 )}
 

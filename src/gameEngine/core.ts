@@ -111,6 +111,18 @@ export const movePlayer = (state: GameState, spaces: number): GameState => {
     }
   }
 
+  // Check Tax (Income Tax, Luxury Tax)
+  if (landedProperty && landedProperty.name.toLowerCase().includes('tax')) {
+    const playerProperties = state.properties.filter(p => p.owner === movingPlayer.name);
+    const propertyValue = playerProperties.reduce((sum, p) => sum + p.currentValue, 0);
+    const totalFinance = movingPlayer.balance + propertyValue;
+    const taxAmount = Math.round((totalFinance * 0.1) / 100) * 100; // 10% rounded to nearest 100
+
+    nextState = applyPayment(nextState, state.currentPlayer, null, taxAmount, 'Tax Payment');
+    nextState = addEvent(nextState, 'pay', movingPlayer.name, `paid ₹${taxAmount.toLocaleString()} in ${landedProperty.name}`, -taxAmount);
+    nextState = { ...nextState, turnState: 'completed' };
+  }
+
   return nextState;
 };
 

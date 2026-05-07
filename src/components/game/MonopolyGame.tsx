@@ -13,6 +13,7 @@ import TransactionNotification from './TransactionNotification';
 import TradingSystem from './TradingSystem';
 import RentPaymentDialog from './RentPaymentDialog';
 import GameLog from './GameLog';
+import TeamPanel from './TeamPanel';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useGameLogic, getInitialState } from '@/hooks/useGameLogic';
@@ -427,6 +428,30 @@ const MonopolyGame: React.FC = () => {
         onDismiss={handleDismissEvent}
       />
 
+      {/* Property Details Overlay - Center Screen */}
+      {selectedProperty && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          onClick={() => setSelectedProperty(null)}
+        >
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm transform transition-all animate-in zoom-in-95 duration-200">
+            <PropertyCard 
+              property={selectedProperty}
+              isOwned={selectedProperty.isOwned}
+              canBuyHouse={isMyTurn && selectedProperty.owner === myPlayer.name}
+              canBuyHotel={isMyTurn && selectedProperty.owner === myPlayer.name}
+              onBuyHouse={() => buildHouse(selectedProperty.id)}
+              onBuyHotel={() => buildHotel(selectedProperty.id)}
+              onSellHouse={() => sellHouse(selectedProperty.id)}
+              onSellHotel={() => sellHotel(selectedProperty.id)}
+              onMortgage={() => mortgageProperty(selectedProperty.id)}
+              onUnmortgage={() => unmortgageProperty(selectedProperty.id)}
+            />
+            <p className="text-center text-slate-400 text-xs mt-4 animate-pulse">Click anywhere to close</p>
+          </div>
+        </div>
+      )}
+
       {/* Dialogs & Overlays removed from global space to board space */}
       
       {/* Game Header */}
@@ -547,130 +572,37 @@ const MonopolyGame: React.FC = () => {
           </GameBoard>
           </div>
           
-          <div className="w-full lg:w-1/4 space-y-6">
-            {/* Game Mode Indicator */}
-            <div className="flex justify-center">
-              <Badge 
-                className="text-lg px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold"
-              >
-                Mode: {gameState.settings.gameMode.toUpperCase()}
-              </Badge>
-            </div>
-            
-            {/* Property Details OR My Portfolio */}
-            {selectedProperty ? (
-              <Card className="bg-slate-900 border border-slate-800 shadow-md">
-                <CardHeader>
-                  <CardTitle className="text-slate-100">Property Details</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {/* Basic Info */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <h3 className="font-bold text-slate-200 mb-2">{selectedProperty.name}</h3>
-                        <div className="space-y-1 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">Type:</span>
-                            <span className="capitalize text-slate-200">{selectedProperty.type}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">Current Value:</span>
-                            <span className="font-semibold text-sky-400">
-                              ₹{selectedProperty.currentValue.toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">Mortgage Value:</span>
-                            <span className="text-slate-200">
-                              ₹{selectedProperty.mortgageValue.toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        {selectedProperty.isOwned && (
-                          <div className="space-y-2">
-                            <Badge variant="secondary" className="bg-slate-800 text-slate-300 border-slate-700">
-                              Owned by {selectedProperty.owner}
-                            </Badge>
-                            {selectedProperty.isMortgaged && (
-                              <Badge variant="destructive" className="bg-rose-900/50 text-rose-300 border-rose-800/50">Mortgaged</Badge>
-                            )}
-                          </div>
-                        )}
-                        
-                        {selectedProperty.isInAuction && (
-                          <Badge className="bg-amber-200 text-amber-900">
-                            Currently in Auction
-                          </Badge>
-                        )}
-
-                        {/* Build controls if owned by current player */}
-                        {selectedProperty.owner === currentPlayer.name && selectedProperty.type === 'property' && (
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <Button size="sm" variant="outline" onClick={() => buildHouse(selectedProperty.id)}>Build House</Button>
-                            <Button size="sm" variant="outline" onClick={() => sellHouse(selectedProperty.id)} disabled={selectedProperty.houses === 0}>Sell House</Button>
-                            <Button size="sm" variant="outline" onClick={() => buildHotel(selectedProperty.id)} disabled={selectedProperty.houses !== 4 || selectedProperty.hasHotel}>Build Hotel</Button>
-                            <Button size="sm" variant="outline" onClick={() => sellHotel(selectedProperty.id)} disabled={!selectedProperty.hasHotel}>Sell Hotel</Button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Rent Information */}
-                    {selectedProperty.type === 'property' && (
-                      <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
-                        <h4 className="font-semibold text-slate-200 mb-3">Rent Structure</h4>
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">Base Rent:</span>
-                            <span className="text-slate-200">₹{selectedProperty.rent[0].toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">1 House:</span>
-                            <span className="text-slate-200">₹{(selectedProperty.rent[1] || 0).toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">2 Houses:</span>
-                            <span className="text-slate-200">₹{(selectedProperty.rent[2] || 0).toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">3 Houses:</span>
-                            <span className="text-slate-200">₹{(selectedProperty.rent[3] || 0).toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">4 Houses:</span>
-                            <span className="text-slate-200">₹{(selectedProperty.rent[4] || 0).toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">Hotel:</span>
-                            <span className="text-slate-200">₹{(selectedProperty.rent[5] || 0).toLocaleString()}</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              /* If no property is selected, show my portfolio dashboard */
+            <div className="w-full lg:w-1/4 space-y-6">
+              {/* Game Mode Indicator */}
+              <div className="flex justify-center">
+                <Badge 
+                  className="text-lg px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold"
+                >
+                  Mode: {gameState.settings.gameMode.toUpperCase()}
+                </Badge>
+              </div>
+              
+              {/* My Portfolio */}
               <PlayerPanel
                 currentPlayer={myPlayer}
                 allPlayers={gameState.players}
-                teams={gameState.teams}
                 ownedProperties={myOwnedProperties}
                 onMortgage={mortgageProperty}
                 onUnmortgage={unmortgageProperty}
                 onSell={handleSellProperty}
                 onTrade={handleTradeOffer}
-                onJoinTeam={joinTeam}
-                onCreateTeam={createTeam}
-                canTeam={gameState.settings.teamsEnabled}
               />
-            )}
-          </div>
+
+              {/* Team Panel - Only visible if teams enabled */}
+              {gameState.settings.teamsEnabled && (
+                <TeamPanel 
+                  currentPlayer={myPlayer}
+                  teams={gameState.teams}
+                  onJoinTeam={joinTeam}
+                  onCreateTeam={createTeam}
+                />
+              )}
+            </div>
         </div>
 
         {/* Bottom Section - Control Panels */}

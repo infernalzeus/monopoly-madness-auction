@@ -495,7 +495,11 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                           type="button"
                           variant={lobbySettings.maxPlayers === num ? "default" : "outline"}
                           className={`flex-1 ${lobbySettings.maxPlayers === num ? 'bg-cyan-600 hover:bg-cyan-700 text-white border-transparent' : 'border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white'}`}
-                          onClick={() => setLobbySettings(prev => ({ ...prev, maxPlayers: num }))}
+                          onClick={() => setLobbySettings(prev => ({ 
+                            ...prev, 
+                            maxPlayers: num,
+                            teamsEnabled: num === 2 ? false : prev.teamsEnabled 
+                          }))}
                         >
                           {num} Players
                         </Button>
