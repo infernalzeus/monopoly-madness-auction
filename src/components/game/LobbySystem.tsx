@@ -19,7 +19,8 @@ import {
   Handshake, 
   Trash2,
   AlertCircle,
-  Clock
+  Clock,
+  Eye
 } from 'lucide-react';
 import { Lobby, GameSettings } from '@/types/game';
 import { db } from '@/lib/firebase';
@@ -53,7 +54,8 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
     preAuctionProperties: [],
     customPropertyLists: {},
     isPrivate: false,
-    gameType: 'standard'
+    gameType: 'standard',
+    blindPickEnabled: false
   });
 
   // Fetch active games
@@ -445,21 +447,37 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                       }
                     />
                   </div>
-                  <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg border border-cyan-400/30">
-                    <div className="flex items-center gap-3">
-                      <Plus className="w-5 h-5 text-indigo-400" />
-                      <div>
-                        <Label className="text-cyan-200 font-semibold">Private Room</Label>
-                        <p className="text-xs text-slate-400">Hidden from public lobby list</p>
+                    <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg border border-cyan-400/30">
+                      <div className="flex items-center gap-3">
+                        <Plus className="w-5 h-5 text-indigo-400" />
+                        <div>
+                          <Label className="text-cyan-200 font-semibold">Private Room</Label>
+                          <p className="text-xs text-slate-400">Hidden from public lobby list</p>
+                        </div>
                       </div>
+                      <Switch
+                        checked={lobbySettings.isPrivate}
+                        onCheckedChange={(checked) =>
+                          setLobbySettings(prev => ({ ...prev, isPrivate: checked }))
+                        }
+                      />
                     </div>
-                    <Switch
-                      checked={lobbySettings.isPrivate}
-                      onCheckedChange={(checked) =>
-                        setLobbySettings(prev => ({ ...prev, isPrivate: checked }))
-                      }
-                    />
-                  </div>
+
+                    <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg border border-cyan-400/30">
+                      <div className="flex items-center gap-3">
+                        <Eye className="w-5 h-5 text-pink-400" />
+                        <div>
+                          <Label className="text-cyan-200 font-semibold">Blind Pick</Label>
+                          <p className="text-xs text-slate-400">Properties hidden until discovered</p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={lobbySettings.blindPickEnabled}
+                        onCheckedChange={(checked) =>
+                          setLobbySettings(prev => ({ ...prev, blindPickEnabled: checked }))
+                        }
+                      />
+                    </div>
                 </div>
               </div>
 

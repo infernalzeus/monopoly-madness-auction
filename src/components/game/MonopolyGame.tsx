@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import MonopolyBoardLayout from './MonopolyBoardLayout';
+import { GameBoard } from '../Gameboard/Gameboard';
+import CentralDisplay from './CentralDisplay';
 import AuctionPanel from './AuctionPanel';
 import PlayerPanel from './PlayerPanel';
 import DiceRoller from './DiceRoller';
@@ -18,7 +19,7 @@ import { useGameLogic, getInitialState } from '@/hooks/useGameLogic';
 import { Property, GameMode, GameSettings, GameEvent, GameState, Player } from '@/types/game';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Crown, Users, TrendingUp, Settings, Gavel } from 'lucide-react';
+import { Crown, Users, TrendingUp, Settings, Gavel, Handshake } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
@@ -45,6 +46,7 @@ const MonopolyGame: React.FC = () => {
   const [setupTradingEnabled, setSetupTradingEnabled] = useState(false);
   const [setupAuctionDuration, setSetupAuctionDuration] = useState(120);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isTradingOpen, setIsTradingOpen] = useState(false);
   
   const {
     gameState,
@@ -89,7 +91,14 @@ const MonopolyGame: React.FC = () => {
   const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayer);
   const myPlayer = gameState.players.find(p => p.id === localPlayerId) || currentPlayer;
 
+  useEffect(() => {
+    console.log("Game Phase:", gameState.gamePhase);
+    console.log("Current Player ID:", gameState.currentPlayer);
+    console.log("Local Player ID:", localPlayerId);
+  }, [gameState.gamePhase, gameState.currentPlayer, localPlayerId]);
+
   if (!currentPlayer || !myPlayer) {
+    console.log("Waiting for players...");
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center">
         <div className="text-xl font-bold flex flex-col items-center text-slate-700">
@@ -221,7 +230,8 @@ const MonopolyGame: React.FC = () => {
         isActive: true,
         isInJail: false,
         jailTurns: 0,
-        pieceIcon: '🔴'
+        pieceIcon: '🔴',
+        discoveredProperties: [0]
       };
       
       const firstState: GameState = { 
@@ -285,7 +295,8 @@ const MonopolyGame: React.FC = () => {
             isActive: true,
             isInJail: false,
             jailTurns: 0,
-            pieceIcon: icons[state.players.length] || '👤'
+            pieceIcon: icons[state.players.length] || '👤',
+            discoveredProperties: [0]
           };
           
           state.players.push(newPlayer);
@@ -467,24 +478,16 @@ const MonopolyGame: React.FC = () => {
         {/* Top/Main Area - Game Board and Dice */}
         <div className="flex flex-col lg:flex-row gap-6 items-start">
           <div className="w-full lg:w-3/4 flex justify-center">
-          <MonopolyBoardLayout
+          <GameBoard
             properties={gameState.properties}
             players={gameState.players}
             onPropertyClick={handlePropertyClick}
             selectedProperty={selectedProperty}
-            lastDiceRoll={gameState.lastDiceRoll}
-            currentEvent={currentDisplayEvent}
-            currentPlayer={currentPlayer?.name || 'Unknown'}
-            isRolling={isRolling}
-            onRollDice={handleDiceRoll}
-            onEndTurn={endTurn}
-            canRoll={gameState.turnState === 'waiting_for_roll' && isMyTurn}
-            canEndTurn={gameState.turnState === 'completed' && isMyTurn}
-            turnState={gameState.turnState}
-            playerColor={currentPlayer?.color || '#DC2626'}
+            blindPickEnabled={gameState.settings.blindPickEnabled}
+            discoveredProperties={myPlayer.discoveredProperties}
           >
-            {(myPendingRentData || currentAuctionData || pendingPurchaseData || ownedPropertyOnTile) && (
-              <div className="absolute inset-0 z-50 flex items-center justify-center p-1 sm:p-4 bg-slate-950/90 rounded-sm backdrop-blur-sm overflow-y-auto overflow-x-hidden">
+            {myPendingRentData || currentAuctionData || pendingPurchaseData || ownedPropertyOnTile ? (
+              <div className="absolute inset-0 z-50 flex items-center justify-center p-1 sm:p-4 bg-slate-950/90 rounded-sm backdrop-blur-sm overflow-y-auto overflow-x-hidden pointer-events-auto">
                 <div className="w-full max-w-sm h-fit">
                   {myPendingRentData ? (
                     <div className="bg-slate-900 rounded-xl shadow-2xl w-full border border-slate-700">
@@ -522,8 +525,26 @@ const MonopolyGame: React.FC = () => {
                   )}
                 </div>
               </div>
+            ) : (
+              <div className="pointer-events-auto">
+                <CentralDisplay
+                  currentEvent={currentDisplayEvent}
+                  currentPlayer={currentPlayer?.name || 'Unknown'}
+                  lastDiceRoll={gameState.lastDiceRoll}
+                  isRolling={isRolling}
+                  onRollDice={handleDiceRoll}
+                  onEndTurn={endTurn}
+                  canRoll={gameState.turnState === 'waiting_for_roll' && isMyTurn}
+                  canEndTurn={gameState.turnState === 'completed' && isMyTurn}
+                  turnState={gameState.turnState}
+                  playerColor={currentPlayer?.color || '#DC2626'}
+                  tradingEnabled={gameState.settings.tradingEnabled}
+                  onTradeClick={() => setIsTradingOpen(true)}
+                  isMyTurn={isMyTurn}
+                />
+              </div>
             )}
-          </MonopolyBoardLayout>
+          </GameBoard>
           </div>
           
           <div className="w-full lg:w-1/4 space-y-6">
@@ -733,19 +754,27 @@ const MonopolyGame: React.FC = () => {
                 </CardContent>
               </Card>
 
-              {/* Trading System */}
-              {gameState.settings.tradingEnabled && (
-                <TradingSystem
-                  currentPlayer={myPlayer}
-                  allPlayers={gameState.players}
-                  ownedProperties={myOwnedProperties}
-                  tradeOffers={gameState.tradeOffers}
-                  onCreateTradeOffer={createTradeOffer}
-                  onAcceptTradeOffer={acceptTradeOffer}
-                  onRejectTradeOffer={rejectTradeOffer}
-                  onPlaceTradeBid={() => {}} 
-                />
-              )}
+              {/* Trading System Dialog */}
+              <Dialog open={isTradingOpen} onOpenChange={setIsTradingOpen}>
+                <DialogContent className="max-w-4xl bg-slate-900 border border-purple-500 max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="text-2xl font-bold text-purple-400 flex items-center gap-2">
+                      <Handshake className="w-6 h-6" />
+                      Trading Market
+                    </DialogTitle>
+                  </DialogHeader>
+                  <TradingSystem
+                    currentPlayer={myPlayer}
+                    allPlayers={gameState.players}
+                    ownedProperties={myOwnedProperties}
+                    tradeOffers={gameState.tradeOffers}
+                    onCreateTradeOffer={createTradeOffer}
+                    onAcceptTradeOffer={acceptTradeOffer}
+                    onRejectTradeOffer={rejectTradeOffer}
+                    onPlaceTradeBid={() => {}} 
+                  />
+                </DialogContent>
+              </Dialog>
 
               {/* Game Log Drawer Trigger */}
               <div className="fixed bottom-4 right-4 z-50">

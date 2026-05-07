@@ -27,6 +27,9 @@ interface CentralDisplayProps {
   canEndTurn?: boolean;
   turnState?: string;
   playerColor: string;
+  tradingEnabled?: boolean;
+  onTradeClick?: () => void;
+  isMyTurn?: boolean;
 }
 
 const CentralDisplay: React.FC<CentralDisplayProps> = ({
@@ -39,7 +42,10 @@ const CentralDisplay: React.FC<CentralDisplayProps> = ({
   canRoll,
   canEndTurn,
   turnState,
-  playerColor
+  playerColor,
+  tradingEnabled = false,
+  onTradeClick,
+  isMyTurn = false
 }) => {
   const [displayText, setDisplayText] = useState<string>('');
   const [isAnimating, setIsAnimating] = useState(false);
@@ -213,6 +219,16 @@ const CentralDisplay: React.FC<CentralDisplayProps> = ({
               </button>
             )}
           </div>
+          
+          {tradingEnabled && isMyTurn && !isRolling && (
+            <button
+              onClick={onTradeClick}
+              className="ml-2 px-4 py-2 rounded-lg font-bold text-xs bg-purple-600 hover:bg-purple-700 text-white shadow-lg transition-all active:scale-95 flex items-center gap-1"
+            >
+              <Handshake className="w-3 h-3" />
+              Trade
+            </button>
+          )}
         </div>
 
         {/* Current Event Display */}

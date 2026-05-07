@@ -67,10 +67,18 @@ export const movePlayer = (state: GameState, spaces: number): GameState => {
     if (player.id === state.currentPlayer) {
       const newPosition = (player.position + spaces) % 40;
       const passedGo = player.position + spaces >= 40;
+      
+      // Update discovered properties
+      const discoveredProperties = [...(player.discoveredProperties || [])];
+      if (!discoveredProperties.includes(newPosition)) {
+        discoveredProperties.push(newPosition);
+      }
+
       return {
         ...player,
         position: newPosition,
-        balance: passedGo ? player.balance + state.settings.passGoReward : player.balance
+        balance: passedGo ? player.balance + state.settings.passGoReward : player.balance,
+        discoveredProperties
       };
     }
     return player;

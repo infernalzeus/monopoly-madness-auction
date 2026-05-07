@@ -30,6 +30,7 @@ const initialGameSettings: GameSettings = {
   allowPropertyEditing: true,
   isPrivate: false,
   gameType: 'standard',
+  blindPickEnabled: false,
   preAuctionProperties: [],
   customPropertyLists: {
     'brown_group': ['prop-1', 'prop-3'],
@@ -160,7 +161,8 @@ const generateInitialPlayers = (): Player[] => {
     isActive: true,
     isInJail: false,
     jailTurns: 0,
-    pieceIcon: icons[index]
+    pieceIcon: icons[index],
+    discoveredProperties: [0] // Always discover GO
   }));
 };
 
@@ -595,19 +597,22 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
 
     setGameState(prev => ({
       ...prev,
-      pendingPurchase: null
+      pendingPurchase: null,
+      turnState: gameState.settings.auctionsEnabled ? 'waiting_for_action' : 'completed'
     }));
 
     if (player && property) {
-      addGameEvent('purchase', player.name, `skipped buying ${property.name}`);
-      if (gameState.settings.auctionsEnabled) {
-        startAuction(pending.propertyId);
-      }
+      addGameEvent('purchase', player.name, `declined buying ${property.name}`);
+      // In this new mode, the player "controls" the auction. 
+      // They can now choose to START the auction via a separate action, or just end turn.
+      // For now, let's keep it simple: if auctions are enabled, they stay in 'waiting_for_action' 
+      // where an "Auction" button should be visible.
     }
 
-    // Advance to next player after decision
-    advanceTurn();
-  }, [gameState.pendingPurchase, gameState.properties, gameState.players, gameState.settings.auctionsEnabled, addGameEvent, startAuction, advanceTurn]);
+    if (!gameState.settings.auctionsEnabled) {
+      advanceTurn();
+    }
+  }, [gameState.pendingPurchase, gameState.properties, gameState.players, gameState.settings.auctionsEnabled, addGameEvent, advanceTurn]);
 
   // Make a simple purchase offer to another player for a specific property
   const makeOffer = useCallback((propertyId: string, toPlayerName: string, amount: number) => {

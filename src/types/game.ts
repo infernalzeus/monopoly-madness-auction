@@ -33,6 +33,7 @@ export interface Player {
   pieceIcon: string;
   isBot?: boolean;
   isSpectator?: boolean;
+  discoveredProperties: number[]; // Array of board positions discovered
 }
 
 export interface Team {
@@ -89,6 +90,7 @@ export interface GameSettings {
   customPropertyLists: Record<string, string[]>; // Named property lists for editing
   isPrivate: boolean;
   gameType: 'auction' | 'team-up' | 'standard';
+  blindPickEnabled: boolean;
 }
 
 export interface DiceRoll {

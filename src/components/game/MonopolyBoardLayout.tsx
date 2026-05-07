@@ -21,6 +21,11 @@ interface MonopolyBoardLayoutProps {
   turnState?: string;
   playerColor: string;
   children?: React.ReactNode;
+  blindPickEnabled?: boolean;
+  discoveredProperties?: number[];
+  tradingEnabled?: boolean;
+  onTradeClick?: () => void;
+  isMyTurn?: boolean;
 }
 
 const AnimatedToken: React.FC<{ 
@@ -74,21 +79,32 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
   canEndTurn,
   turnState,
   playerColor,
-  children
+  children,
+  blindPickEnabled = false,
+  discoveredProperties = [],
+  tradingEnabled = false,
+  onTradeClick,
+  isMyTurn = false
 }) => {
   const [playerPositions, setPlayerPositions] = useState<Record<string, number>>({});
   const [isMoving, setIsMoving] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     players.forEach(player => {
-      const previousPosition = playerPositions[player.id];
-      if (previousPosition !== undefined && previousPosition !== player.position) {
-        setIsMoving(prev => ({ ...prev, [player.id]: true }));
-        setTimeout(() => setIsMoving(prev => ({ ...prev, [player.id]: false })), 1500);
-      }
-      setPlayerPositions(prev => ({ ...prev, [player.id]: player.position }));
+      // Use functional update to get current state without adding it to dependencies
+      setPlayerPositions(currentPositions => {
+        const previousPosition = currentPositions[player.id];
+        if (previousPosition !== undefined && previousPosition !== player.position) {
+          setIsMoving(prev => ({ ...prev, [player.id]: true }));
+          setTimeout(() => setIsMoving(prev => ({ ...prev, [player.id]: false })), 1500);
+        }
+        if (previousPosition !== player.position) {
+          return { ...currentPositions, [player.id]: player.position };
+        }
+        return currentPositions;
+      });
     });
-  }, [players, playerPositions]);
+  }, [players]); 
 
   // Strong contrasting colors for the property groups
   const colorGroups: Record<string, string> = {
@@ -115,7 +131,9 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
 
   const renderCell = (position: number) => {
     const property = getPropertyByPosition(position);
-    if (!property) return null;
+    if (!property) return <div key={position} className="bg-slate-900 border border-slate-800" style={{ gridRow: getGridPosition(position).row, gridColumn: getGridPosition(position).col }} />;
+
+    const isDiscovered = !blindPickEnabled || (Array.isArray(discoveredProperties) && discoveredProperties.includes(position));
     const { row, col } = getGridPosition(position);
     const playersHere = getPlayersAtPosition(position);
     const isCorner = position % 10 === 0;
@@ -135,7 +153,9 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
           style={{ gridRow: row, gridColumn: col }}
         >
           {icon}
-          <span className="text-[0.5rem] sm:text-xs md:text-sm font-bold text-center mt-1 uppercase leading-tight line-clamp-2">{property.name}</span>
+          <span className="text-[0.5rem] sm:text-xs md:text-sm font-bold text-center mt-1 uppercase leading-tight line-clamp-2">
+            {isDiscovered ? property.name : '?'}
+          </span>
           {playersHere.length > 0 && (
             <div className="absolute inset-0 flex justify-center items-center flex-wrap gap-0.5 sm:gap-1 p-0.5 overflow-hidden z-20">
               {playersHere.map((player, idx) => (
@@ -172,35 +192,37 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
           ${selectedProperty?.id === property.id ? 'ring-2 ring-inset ring-blue-500 z-10' : 'hover:bg-slate-800'}
         `}
         style={{ gridRow: row, gridColumn: col }}
-        onClick={() => onPropertyClick(property)}
+         onClick={() => isDiscovered && onPropertyClick(property)}
       >
-        {property.colorGroup && <div className={`${colorBarClass} ${colorGroupClass} border-slate-800 z-0`} />}
+        {isDiscovered && property.colorGroup && <div className={`${colorBarClass} ${colorGroupClass} border-slate-800 z-0`} />}
         
-        <div className={`flex flex-col justify-between h-full w-full z-10 relative ${padClass}`}>
+        <div className={`flex flex-col justify-between h-full w-full z-10 relative ${isDiscovered ? padClass : 'p-0.5'}`}>
           <div className="flex flex-col items-center justify-center h-full overflow-hidden">
             <span className="text-[0.38rem] sm:text-[0.6rem] md:text-xs lg:text-sm font-bold text-slate-200 leading-tight text-center uppercase break-words hyphens-auto w-full px-0.5 flex-1 flex items-center justify-center overflow-hidden">
-              {property.name}
+              {isDiscovered ? property.name : '???'}
             </span>
           </div>
 
-          <div className="flex flex-col items-center mt-auto">
-            {/* Features (Houses/Hotels) */}
-            {property.type === 'property' && (property.houses > 0 || property.hasHotel) && (
-              <div className="flex gap-px mb-0.5">
-                {property.hasHotel ? (
-                  <Hotel className="w-2 h-2 sm:w-3 sm:h-3 text-red-600" />
-                ) : (
-                  Array.from({ length: property.houses }).map((_, idx) => (
-                    <Home key={idx} className="w-1.5 h-1.5 sm:w-2 sm:h-2 text-green-700" />
-                  ))
-                )}
-              </div>
-            )}
-            
-            <span className="text-[0.45rem] sm:text-[0.6rem] md:text-xs lg:text-sm font-bold text-slate-300 tracking-tighter mt-auto">
-              ₹{(property.baseValue / 1000)}K
-            </span>
-          </div>
+          {isDiscovered && (
+            <div className="flex flex-col items-center mt-auto">
+              {/* Features (Houses/Hotels) */}
+              {property.type === 'property' && (property.houses > 0 || property.hasHotel) && (
+                <div className="flex gap-px mb-0.5">
+                  {property.hasHotel ? (
+                    <Hotel className="w-2 h-2 sm:w-3 sm:h-3 text-red-600" />
+                  ) : (
+                    Array.from({ length: property.houses }).map((_, idx) => (
+                      <Home key={idx} className="w-1.5 h-1.5 sm:w-2 sm:h-2 text-green-700" />
+                    ))
+                  )}
+                </div>
+              )}
+              
+              <span className="text-[0.45rem] sm:text-[0.6rem] md:text-xs lg:text-sm font-bold text-slate-300 tracking-tighter mt-auto">
+                ₹{(property.baseValue / 1000)}K
+              </span>
+            </div>
+          )}
 
           {/* Player Tokens overlay */}
           {playersHere.length > 0 && (
@@ -226,8 +248,13 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
   return (
     <div className="bg-slate-800 p-2 sm:p-4 rounded-xl shadow-xl w-full">
       <div className="relative w-full aspect-square max-w-4xl mx-auto grid grid-cols-11 grid-rows-11 gap-[1px] sm:gap-[2px] bg-slate-950 border-2 sm:border-4 border-slate-900 rounded-sm p-[1px] sm:p-[2px]">
-        {/* Render all 40 cells explicitly */}
-        {Array.from({ length: 40 }).map((_, i) => renderCell(i))}
+        {properties.length > 0 ? (
+          Array.from({ length: 40 }).map((_, i) => renderCell(i))
+        ) : (
+          <div className="col-span-full row-span-full flex items-center justify-center text-white">
+            Loading properties...
+          </div>
+        )}
         
         {/* Central Space */}
         <div className="bg-slate-950 flex flex-col items-center justify-center p-2 sm:p-4 lg:p-6 shadow-inner border border-slate-800 relative" style={{ gridRow: '2 / 11', gridColumn: '2 / 11' }}>
@@ -243,6 +270,9 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
                canEndTurn={canEndTurn}
                turnState={turnState}
                playerColor={playerColor}
+               tradingEnabled={tradingEnabled}
+               onTradeClick={onTradeClick}
+               isMyTurn={isMyTurn}
             />
           )}
         </div>
