@@ -119,7 +119,7 @@ export const movePlayer = (state: GameState, spaces: number): GameState => {
     const taxAmount = Math.round((totalFinance * 0.1) / 100) * 100; // 10% rounded to nearest 100
 
     nextState = applyPayment(nextState, state.currentPlayer, null, taxAmount, 'Tax Payment');
-    nextState = addEvent(nextState, 'pay', movingPlayer.name, `paid ₹${taxAmount.toLocaleString()} in ${landedProperty.name}`, -taxAmount);
+    nextState = addEvent(nextState, 'tax', movingPlayer.name, `paid ₹${taxAmount.toLocaleString()} in ${landedProperty.name}`, -taxAmount);
     nextState = { ...nextState, turnState: 'completed' };
   }
 

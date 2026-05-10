@@ -439,12 +439,27 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
 
   // Handle dice roll and player movement
   const handleDiceRoll = useCallback(() => {
+    // SECURITY & SYNC: Only allow current player to roll if it's their turn and no roll is in progress
+    if (gameState.currentPlayer !== localPlayerId || gameState.turnState !== 'waiting_for_roll' || isRolling) {
+      console.warn("Dice roll rejected: Unauthorized or already rolling.");
+      return;
+    }
+
+    const diceResult = rollDice(); // Pre-generate to avoid transaction retry randomness
     setIsRolling(true);
+    
+    // Simulate dice roll animation delay
     setTimeout(() => {
-      setGameState((prev: GameState) => rollDiceLogic(prev, rollDice()));
+      setGameState((prev: GameState) => {
+        // Double-check state inside transaction to prevent race conditions
+        if (prev.currentPlayer !== localPlayerId || prev.turnState !== 'waiting_for_roll') {
+          return prev;
+        }
+        return rollDiceLogic(prev, diceResult);
+      });
       setIsRolling(false);
     }, 800);
-  }, [setGameState, rollDice]);
+  }, [gameState.currentPlayer, gameState.turnState, localPlayerId, isRolling, setGameState, rollDice]);
 
   
 

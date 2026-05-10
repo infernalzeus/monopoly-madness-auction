@@ -102,7 +102,7 @@ export interface DiceRoll {
 
 export interface GameEvent {
   id: string;
-  type: 'move' | 'purchase' | 'rent' | 'auction' | 'jail' | 'passGo' | 'trade' | 'build' | 'bankrupt' | 'card' | 'mortgage';
+  type: 'move' | 'purchase' | 'rent' | 'auction' | 'jail' | 'passGo' | 'trade' | 'build' | 'bankrupt' | 'card' | 'mortgage' | 'tax' | 'pay';
   player: string;
   message: string;
   timestamp: number;

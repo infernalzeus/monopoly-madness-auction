@@ -46,20 +46,20 @@ const AnimatedToken: React.FC<{
   return (
     <div
       className={`
-        w-4 h-4 sm:w-6 sm:h-6 rounded-full border-2 border-white shadow-lg text-[0.4rem] sm:text-xs flex items-center justify-center font-bold
-        transition-all duration-300 ease-out z-20
+        w-4 h-4 sm:w-7 sm:h-7 rounded-full border-2 border-white shadow-xl text-[0.4rem] sm:text-xs flex items-center justify-center font-bold
+        transition-all duration-300 ease-out z-20 ring-1 ring-black/50
         ${isAnimating ? 'animate-bounce scale-110' : 'scale-100'}
       `}
       style={{ 
         backgroundColor: player.color,
         boxShadow: isAnimating 
-          ? '0 0 0 3px rgba(0,0,0,0.4), 0 4px 8px rgba(0,0,0,0.4)' 
-          : '0 0 0 1px rgba(0,0,0,0.3)',
+          ? '0 0 0 4px rgba(0,0,0,0.5), 0 6px 12px rgba(0,0,0,0.4)' 
+          : '0 0 0 1.5px rgba(0,0,0,0.2)',
         animationDelay: `${delay}ms`
       }}
       title={player.name}
     >
-      <span dangerouslySetInnerHTML={{ __html: player.pieceIcon }} />
+      <span className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]" dangerouslySetInnerHTML={{ __html: player.pieceIcon }} />
     </div>
   );
 };
@@ -157,7 +157,7 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
             {isDiscovered ? property.name : '?'}
           </span>
           {playersHere.length > 0 && (
-            <div className="absolute inset-0 flex justify-center items-center flex-wrap gap-0.5 sm:gap-1 p-0.5 overflow-hidden z-20">
+            <div className="absolute inset-0 flex justify-center items-center flex-wrap gap-0.5 sm:gap-1 p-0.5 overflow-hidden z-[100]">
               {playersHere.map((player, idx) => (
                 <AnimatedToken key={player.id} player={player} isMoving={isMoving[player.id]} delay={idx * 100} />
               ))}
@@ -188,7 +188,7 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
       <Card
         key={position}
         className={`
-          cursor-pointer transition-colors relative rounded-sm border border-slate-800 overflow-hidden flex flex-col bg-slate-900
+          cursor-pointer transition-all relative rounded-sm border border-slate-800 flex flex-col bg-slate-900
           ${selectedProperty?.id === property.id ? 'ring-2 ring-inset ring-blue-500 z-10' : 'hover:bg-slate-800'}
         `}
         style={{ gridRow: row, gridColumn: col }}
@@ -226,7 +226,7 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
 
           {/* Player Tokens overlay */}
           {playersHere.length > 0 && (
-            <div className="absolute inset-0 flex justify-center items-center flex-wrap gap-0.5 pointer-events-none p-1 z-30">
+            <div className="absolute inset-0 flex justify-center items-center flex-wrap gap-0.5 pointer-events-none p-1 z-[100]">
               {playersHere.map((player, idx) => (
                 <AnimatedToken key={player.id} player={player} isMoving={isMoving[player.id]} delay={idx * 100} />
               ))}
