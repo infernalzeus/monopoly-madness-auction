@@ -23,6 +23,7 @@ const initialGameSettings: GameSettings = {
   mortgageEnabled: true,
   tradingEnabled: true,
   auctionDuration: 120,
+  turnTimerDuration: 60, // 60s default per turn
   maxPlayers: 8,
   startingBalance: 1500000, // ₹15 lakh starting balance
   passGoReward: 200000, // ₹2 lakh for passing GO
@@ -178,6 +179,7 @@ export const getInitialState = (): GameState => ({
     lastDiceRoll: null,
     gameEvents: [],
     doubleCount: 0,
+    turnEndTime: null,
     pendingPurchase: null,
     winnerId: null,
     turnState: 'waiting_for_roll',
@@ -247,6 +249,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
   
 
   const [auctionTimer, setAuctionTimer] = useState<number | null>(null);
+  const [turnTimer, setTurnTimer] = useState<number | null>(null);
   const [isRolling, setIsRolling] = useState(false);
 
   // Chance and Community Chest decks (16 each). Simple representative effects.
@@ -318,7 +321,16 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
   }, []);
 
   const advanceTurn = useCallback(() => {
-    setGameState((prev: GameState) => advanceTurnLogic(prev));
+    setGameState((prev: GameState) => {
+      const next = advanceTurnLogic(prev);
+      // Set turn end time if duration is configured
+      if (prev.settings.turnTimerDuration && prev.settings.turnTimerDuration > 0) {
+        next.turnEndTime = Date.now() + (prev.settings.turnTimerDuration * 1000);
+      } else {
+        next.turnEndTime = null;
+      }
+      return next;
+    });
   }, [setGameState]);
 
   const endTurn = useCallback(() => {
@@ -455,7 +467,12 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
         if (prev.currentPlayer !== localPlayerId || prev.turnState !== 'waiting_for_roll') {
           return prev;
         }
-        return rollDiceLogic(prev, diceResult);
+        const next = rollDiceLogic(prev, diceResult);
+        // Reset turn timer for the new sub-phase if needed
+        if (prev.settings.turnTimerDuration && prev.settings.turnTimerDuration > 0) {
+          next.turnEndTime = Date.now() + (prev.settings.turnTimerDuration * 1000);
+        }
+        return next;
       });
       setIsRolling(false);
     }, 800);
@@ -560,7 +577,40 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
     }
   }, [auctionTimer, gameState.currentAuction, endAuction]);
 
+  // Turn timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (gameState.turnEndTime && gameState.gamePhase === 'playing') {
+      interval = setInterval(() => {
+        const remaining = Math.max(0, Math.floor((gameState.turnEndTime! - Date.now()) / 1000));
+        setTurnTimer(remaining);
+        
+        // Auto-advance if timer hits 0 AND I am the current player (to trigger the update once)
+        if (remaining === 0 && gameState.currentPlayer === localPlayerId) {
+          console.log("Turn timer expired. Auto-advancing...");
+          advanceTurn();
+        }
+      }, 1000);
+    } else {
+      setTurnTimer(null);
+    }
 
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [gameState.turnEndTime, gameState.gamePhase, gameState.currentPlayer, localPlayerId, advanceTurn]);
+
+  // Automatic turn advancement when status is 'completed'
+  useEffect(() => {
+    if (gameState.turnState === 'completed' && gameState.gamePhase === 'playing' && gameState.currentPlayer === localPlayerId) {
+      const timer = setTimeout(() => {
+        console.log("Turn completed. Auto-advancing...");
+        advanceTurn();
+      }, 2000); // 2 second delay to show results before moving
+      return () => clearTimeout(timer);
+    }
+  }, [gameState.turnState, gameState.gamePhase, gameState.currentPlayer, localPlayerId, advanceTurn]);
   
 
   const placeBid = useCallback((amount: number, bidderId?: string) => {
@@ -933,15 +983,22 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
 
   // Game mode management
   const setGameMode = useCallback((mode: GameMode) => {
-    setGameState(prev => ({
-      ...prev,
-      settings: { ...prev.settings, gameMode: mode },
-      gamePhase: mode === 'auction' ? 'auction' : mode === 'console' ? 'setup' : 'playing',
-      preAuctionPhase: mode === 'auction',
-      consoleOpen: mode === 'console',
-      turnState: 'waiting_for_roll'
-    }));
-  }, []);
+    setGameState(prev => {
+      const isStarting = mode !== 'console';
+      const next: GameState = {
+        ...prev,
+        settings: { ...prev.settings, gameMode: mode },
+        gamePhase: mode === 'auction' ? 'auction' : mode === 'console' ? 'setup' : 'playing',
+        preAuctionPhase: mode === 'auction',
+        consoleOpen: mode === 'console',
+        turnState: 'waiting_for_roll'
+      };
+      if (isStarting && prev.settings.turnTimerDuration && prev.settings.turnTimerDuration > 0) {
+        next.turnEndTime = Date.now() + (prev.settings.turnTimerDuration * 1000);
+      }
+      return next;
+    });
+  }, [setGameState]);
 
   const startPreAuction = useCallback(() => {
     if (gameState.settings.gameMode !== 'auction') return;
@@ -955,13 +1012,19 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
   }, [gameState.settings.gameMode]);
 
   const endPreAuction = useCallback(() => {
-    setGameState(prev => ({
-      ...prev,
-      gamePhase: 'playing',
-      preAuctionPhase: false,
-      turnState: 'waiting_for_roll'
-    }));
-  }, []);
+    setGameState(prev => {
+      const next: GameState = {
+        ...prev,
+        gamePhase: 'playing',
+        preAuctionPhase: false,
+        turnState: 'waiting_for_roll'
+      };
+      if (prev.settings.turnTimerDuration && prev.settings.turnTimerDuration > 0) {
+        next.turnEndTime = Date.now() + (prev.settings.turnTimerDuration * 1000);
+      }
+      return next;
+    });
+  }, [setGameState]);
 
   // Console management
   const toggleConsole = useCallback(() => {
@@ -1189,6 +1252,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
   return {
     gameState,
     auctionTimer,
+    turnTimer,
     isRolling,
     randomizeProperties,
     startAuction,

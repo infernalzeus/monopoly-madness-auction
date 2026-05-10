@@ -30,6 +30,8 @@ interface CentralDisplayProps {
   tradingEnabled?: boolean;
   onTradeClick?: () => void;
   isMyTurn?: boolean;
+  turnTimer?: number | null;
+  turnTimerDuration?: number;
 }
 
 const CentralDisplay: React.FC<CentralDisplayProps> = ({
@@ -45,7 +47,9 @@ const CentralDisplay: React.FC<CentralDisplayProps> = ({
   playerColor,
   tradingEnabled = false,
   onTradeClick,
-  isMyTurn = false
+  isMyTurn = false,
+  turnTimer = null,
+  turnTimerDuration = 0
 }) => {
   const [displayText, setDisplayText] = useState<string>('');
   const [isAnimating, setIsAnimating] = useState(false);
@@ -180,43 +184,49 @@ const CentralDisplay: React.FC<CentralDisplayProps> = ({
             </div>
           )}
 
-          {/* Roll / End Turn Button */}
-          <div className="flex justify-center">
+          {/* Roll / Turn Timer Display */}
+          <div className="flex flex-col items-center gap-3">
             {turnState === 'completed' ? (
-              canEndTurn ? (
-                <button
-                  onClick={onEndTurn}
-                  className="px-6 py-2 rounded-lg font-bold text-sm transition-all duration-200 transform bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
-                >
-                  🛑 End Turn
-                </button>
-              ) : (
-                <div className="text-gray-400 text-sm font-semibold animate-pulse">
-                  Waiting for {currentPlayer} to end turn...
-                </div>
-              )
+              <div className="text-emerald-400 text-sm font-bold animate-pulse flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                Action Completed - Auto Advancing...
+              </div>
             ) : (
-              <button
-                onClick={onRollDice}
-                disabled={!canRoll || isRolling}
-                className={`
-                  px-6 py-2 rounded-lg font-bold text-sm transition-all duration-200 transform
-                  ${canRoll && !isRolling
-                    ? 'bg-black hover:bg-gray-900 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95'
-                    : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                  }
-                  ${isRolling ? 'animate-pulse' : ''}
-                `}
-              >
-                {isRolling ? (
-                  <div className="flex items-center gap-1">
-                    <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
-                    Rolling...
+              <>
+                <button
+                  onClick={onRollDice}
+                  disabled={!canRoll || isRolling}
+                  className={`
+                    px-8 py-3 rounded-full font-black text-sm uppercase tracking-widest transition-all duration-200 transform
+                    ${canRoll && !isRolling
+                      ? 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] hover:scale-105 active:scale-95'
+                      : 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50'
+                    }
+                    ${isRolling ? 'animate-pulse' : ''}
+                  `}
+                >
+                  {isRolling ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin w-4 h-4 border-2 border-black border-t-transparent rounded-full"></div>
+                      Rolling...
+                    </div>
+                  ) : (
+                    '🎲 Roll Dice'
+                  )}
+                </button>
+
+                {turnTimer !== null && turnTimerDuration > 0 && (
+                  <div className="flex flex-col items-center">
+                     <Badge variant="outline" className={`
+                       text-lg px-4 py-1 font-mono transition-colors border-2
+                       ${turnTimer <= 10 ? 'border-red-500 text-red-500 animate-pulse' : 'border-cyan-500/50 text-cyan-400'}
+                     `}>
+                       ⏳ {turnTimer}s
+                     </Badge>
+                     <p className="text-[0.6rem] uppercase tracking-widest text-slate-500 mt-1">Time Remaining</p>
                   </div>
-                ) : (
-                  '🎲 Roll Dice'
                 )}
-              </button>
+              </>
             )}
           </div>
           

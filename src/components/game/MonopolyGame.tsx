@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GameBoard } from '../Gameboard/Gameboard';
+import MonopolyBoardLayout from './MonopolyBoardLayout';
 import CentralDisplay from './CentralDisplay';
 import AuctionPanel from './AuctionPanel';
 import PlayerPanel from './PlayerPanel';
@@ -52,6 +52,7 @@ const MonopolyGame: React.FC = () => {
   const {
     gameState,
     auctionTimer,
+    turnTimer,
     isRolling,
     randomizeProperties,
     startAuction,
@@ -503,13 +504,28 @@ const MonopolyGame: React.FC = () => {
         {/* Top/Main Area - Game Board and Dice */}
         <div className="flex flex-col lg:flex-row gap-6 items-start">
           <div className="w-full lg:w-3/4 flex justify-center">
-          <GameBoard
+          <MonopolyBoardLayout
             properties={gameState.properties}
             players={gameState.players}
             onPropertyClick={handlePropertyClick}
             selectedProperty={selectedProperty}
+            lastDiceRoll={gameState.lastDiceRoll}
+            currentEvent={currentDisplayEvent}
+            currentPlayer={currentPlayer.id}
+            isRolling={isRolling}
+            onRollDice={handleDiceRoll}
+            onEndTurn={endTurn}
+            canRoll={gameState.turnState === 'waiting_for_roll' && isMyTurn}
+            canEndTurn={gameState.turnState === 'completed' && isMyTurn}
+            turnState={gameState.turnState}
+            playerColor={currentPlayer.color}
             blindPickEnabled={gameState.settings.blindPickEnabled}
             discoveredProperties={myPlayer.discoveredProperties}
+            tradingEnabled={gameState.settings.tradingEnabled}
+            onTradeClick={() => setIsTradingOpen(true)}
+            isMyTurn={isMyTurn}
+            turnTimer={turnTimer}
+            turnTimerDuration={gameState.settings.turnTimerDuration}
           >
             {myPendingRentData || currentAuctionData || pendingPurchaseData || ownedPropertyOnTile ? (
               <div className="absolute inset-0 z-50 flex items-center justify-center p-1 sm:p-4 bg-slate-950/90 rounded-sm backdrop-blur-sm overflow-y-auto overflow-x-hidden pointer-events-auto">
@@ -550,26 +566,8 @@ const MonopolyGame: React.FC = () => {
                   )}
                 </div>
               </div>
-            ) : (
-              <div className="pointer-events-auto">
-                <CentralDisplay
-                  currentEvent={currentDisplayEvent}
-                  currentPlayer={currentPlayer?.name || 'Unknown'}
-                  lastDiceRoll={gameState.lastDiceRoll}
-                  isRolling={isRolling}
-                  onRollDice={handleDiceRoll}
-                  onEndTurn={endTurn}
-                  canRoll={gameState.turnState === 'waiting_for_roll' && isMyTurn}
-                  canEndTurn={gameState.turnState === 'completed' && isMyTurn}
-                  turnState={gameState.turnState}
-                  playerColor={currentPlayer?.color || '#DC2626'}
-                  tradingEnabled={gameState.settings.tradingEnabled}
-                  onTradeClick={() => setIsTradingOpen(true)}
-                  isMyTurn={isMyTurn}
-                />
-              </div>
-            )}
-          </GameBoard>
+            ) : null}
+          </MonopolyBoardLayout>
           </div>
           
             <div className="w-full lg:w-1/4 space-y-6">

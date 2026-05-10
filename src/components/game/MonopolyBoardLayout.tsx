@@ -26,6 +26,8 @@ interface MonopolyBoardLayoutProps {
   tradingEnabled?: boolean;
   onTradeClick?: () => void;
   isMyTurn?: boolean;
+  turnTimer?: number | null;
+  turnTimerDuration?: number;
 }
 
 const AnimatedToken: React.FC<{ 
@@ -84,7 +86,9 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
   discoveredProperties = [],
   tradingEnabled = false,
   onTradeClick,
-  isMyTurn = false
+  isMyTurn = false,
+  turnTimer = null,
+  turnTimerDuration = 0
 }) => {
   const [playerPositions, setPlayerPositions] = useState<Record<string, number>>({});
   const [isMoving, setIsMoving] = useState<Record<string, boolean>>({});
@@ -273,6 +277,8 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
                tradingEnabled={tradingEnabled}
                onTradeClick={onTradeClick}
                isMyTurn={isMyTurn}
+               turnTimer={turnTimer}
+               turnTimerDuration={turnTimerDuration}
             />
           )}
         </div>

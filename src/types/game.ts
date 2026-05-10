@@ -91,6 +91,7 @@ export interface GameSettings {
   isPrivate: boolean;
   gameType: 'auction' | 'team-up' | 'standard';
   blindPickEnabled: boolean;
+  turnTimerDuration?: number; // In seconds
 }
 
 export interface DiceRoll {
@@ -128,6 +129,7 @@ export interface GameState {
   consoleOpen: boolean;
   tradeOffers: TradeOffer[];
   pendingRent?: { propertyId: string; owner: string; amount: number } | null;
+  turnEndTime?: number | null;
 }
 
 export interface TradeOffer {

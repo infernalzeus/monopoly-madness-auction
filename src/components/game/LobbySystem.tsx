@@ -55,7 +55,8 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
     customPropertyLists: {},
     isPrivate: false,
     gameType: 'standard',
-    blindPickEnabled: false
+    blindPickEnabled: false,
+    turnTimerDuration: 60
   });
 
   // Fetch active games
@@ -502,6 +503,26 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                           }))}
                         >
                           {num} Players
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-cyan-200 font-semibold">Turn Timer</Label>
+                    <div className="flex gap-2">
+                      {[0, 30, 60, 90].map(sec => (
+                        <Button
+                          key={sec}
+                          type="button"
+                          variant={lobbySettings.turnTimerDuration === sec ? "default" : "outline"}
+                          className={`flex-1 ${lobbySettings.turnTimerDuration === sec || (!lobbySettings.turnTimerDuration && sec === 0) ? 'bg-cyan-600 hover:bg-cyan-700 text-white border-transparent' : 'border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white'}`}
+                          onClick={() => setLobbySettings(prev => ({ 
+                            ...prev, 
+                            turnTimerDuration: sec
+                          }))}
+                        >
+                          {sec === 0 ? 'Off' : `${sec}s`}
                         </Button>
                       ))}
                     </div>
