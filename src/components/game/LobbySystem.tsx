@@ -59,18 +59,53 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
     turnTimerDuration: 60
   });
 
-  // Fetch active games
+  // Fetch active games and cleanup inactive ones
   useEffect(() => {
-    const q = query(collection(db, 'games'), orderBy('lastUpdated', 'desc'), limit(30));
+    // We query more games than we display to identify stale ones for cleanup
+    const q = query(collection(db, 'games'), orderBy('lastUpdated', 'desc'), limit(50));
+    
     const unsubscribe = onSnapshot(q, (snap) => {
-      const oneMinuteAgo = Date.now() - 60000;
-      const games = snap.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter((g: any) => 
-          !g.gameState?.settings?.isPrivate && 
-          (g.lastUpdated || 0) > oneMinuteAgo
-        );
-      setActiveGames(games);
+      const now = Date.now();
+      const hideThreshold = now - 60000; // 1 minute to hide from lobby
+      const deleteThreshold = now - 600000; // 10 minutes for final deletion from DB
+      
+      const visibleGames: any[] = [];
+      const staleIds: string[] = [];
+
+      snap.docs.forEach(docSnap => {
+        const data = docSnap.data() as any;
+        const lastUpdated = data.lastUpdated || 0;
+        const status = data.status;
+        const gamePhase = data.gameState?.gamePhase;
+        const isPrivate = data.gameState?.settings?.isPrivate;
+
+        // A game is active for lobby display if it hasn't ended and was updated recently
+        const isActuallyEnded = status === 'ended' || gamePhase === 'ended';
+        const isActiveForLobby = !isActuallyEnded && lastUpdated > hideThreshold;
+        
+        if (isActiveForLobby && !isPrivate) {
+          visibleGames.push({ id: docSnap.id, ...data });
+        }
+        
+        // Auto-delete if game ended OR hasn't been updated for 10 minutes
+        if (isActuallyEnded || lastUpdated < deleteThreshold) {
+          staleIds.push(docSnap.id);
+        }
+      });
+
+      setActiveGames(visibleGames);
+      
+      // Perform automatic cleanup of stale/ended games
+      if (staleIds.length > 0) {
+        staleIds.forEach(async (id) => {
+          try {
+            await deleteDoc(doc(db, 'games', id));
+            console.log(`Auto-deleted inactive/ended game: ${id}`);
+          } catch (err) {
+            // Silently fail if someone else deleted it first or permission denied
+          }
+        });
+      }
     });
 
     // Load delete cooldown
@@ -111,7 +146,7 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
     const isInactive = status === 'ended' || (Date.now() - lastUpdated) > 60000; // 1 minute since last update (heartbeat failure)
 
     if (!isHost && !isInactive) {
-      alert("You can only delete games that you hosted or those that are inactive (2+ hours since last update).");
+      alert("You can only delete games that you hosted or those that are inactive (over 1 minute since last update).");
       return;
     }
 

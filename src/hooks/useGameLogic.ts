@@ -236,11 +236,19 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
       }
       const currentState = snap.data().gameState;
       let nextState = typeof updater === 'function' ? updater(currentState) : updater;
-      transaction.update(roomRef, { 
+      
+      const updateData: any = { 
         gameState: nextState,
         lastUpdated: Date.now(),
         playerCount: nextState.players.length
-      });
+      };
+
+      // Also update top-level status if game ended
+      if (nextState.gamePhase === 'ended') {
+        updateData.status = 'ended';
+      }
+
+      transaction.update(roomRef, updateData);
     }).catch(console.error);
   }, [roomId, gameStateInternal]);
   
