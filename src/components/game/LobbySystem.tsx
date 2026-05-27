@@ -180,8 +180,9 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
       <div className="w-full max-w-4xl">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-6xl font-bold text-white mb-4">
-            🎮 Monopoly Madness
+          <h1 className="text-5xl sm:text-6xl font-bold text-white mb-4 flex items-center justify-center gap-4">
+            <img src="/favicon.svg" alt="Monopoly Madness Icon" className="w-16 h-16 sm:w-20 sm:h-20 animate-pulse" />
+            Monopoly Madness
           </h1>
           <p className="text-xl text-cyan-200 mb-8">
             Create or join a lobby to start your auction adventure!

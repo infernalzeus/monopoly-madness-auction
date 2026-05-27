@@ -58,11 +58,13 @@ const GameConsole: React.FC<GameConsoleProps> = ({
     setSelectedProperty(property);
     setEditingProperty({
       name: property.name,
+      type: property.type,
+      colorGroup: property.colorGroup || '',
       currentValue: property.currentValue,
       baseValue: property.baseValue,
-      rent: property.rent,
-      houseCost: property.houseCost,
-      hotelCost: property.hotelCost
+      rent: property.rent ? [...property.rent] : [0,0,0,0,0,0],
+      houseCost: property.houseCost || 0,
+      hotelCost: property.hotelCost || 0
     });
   };
 
@@ -169,7 +171,7 @@ const GameConsole: React.FC<GameConsoleProps> = ({
                         <Edit3 className="w-5 h-5" />
                         ✏️ Edit Property
                       </h3>
-                      <div className="space-y-4 bg-slate-800/50 p-4 rounded-lg border border-cyan-400/30">
+                      <div className="space-y-4 bg-slate-800/50 p-4 rounded-lg border border-cyan-400/30 overflow-y-auto max-h-[500px]">
                         <div>
                           <label className="text-sm font-bold text-cyan-200 mb-2 block">🏷️ Name</label>
                           <Input
@@ -178,107 +180,193 @@ const GameConsole: React.FC<GameConsoleProps> = ({
                             className="bg-slate-700 border-cyan-400/50 text-cyan-100 focus:border-cyan-400"
                           />
                         </div>
+                        
                         <div>
-                          <label className="text-sm font-bold text-cyan-200 mb-2 block">💰 Current Value</label>
-                          <Input
-                            type="number"
-                            value={editingProperty.currentValue || 0}
-                            onChange={(e) => setEditingProperty(prev => ({ ...prev, currentValue: parseInt(e.target.value) || 0 }))}
-                            className="bg-slate-700 border-cyan-400/50 text-cyan-100 focus:border-cyan-400"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-sm font-bold text-cyan-200 mb-2 block">💎 Base Value</label>
-                          <Input
-                            type="number"
-                            value={editingProperty.baseValue || 0}
-                            onChange={(e) => setEditingProperty(prev => ({ ...prev, baseValue: parseInt(e.target.value) || 0 }))}
-                            className="bg-slate-700 border-cyan-400/50 text-cyan-100 focus:border-cyan-400"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-sm font-bold text-cyan-200 mb-2 block">🏠 House Cost</label>
-                          <Input
-                            type="number"
-                            value={editingProperty.houseCost || 0}
-                            onChange={(e) => setEditingProperty(prev => ({ ...prev, houseCost: parseInt(e.target.value) || 0 }))}
-                            className="bg-slate-700 border-cyan-400/50 text-cyan-100 focus:border-cyan-400"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-sm font-bold text-cyan-200 mb-2 block">🏨 Hotel Cost</label>
-                          <Input
-                            type="number"
-                            value={editingProperty.hotelCost || 0}
-                            onChange={(e) => setEditingProperty(prev => ({ ...prev, hotelCost: parseInt(e.target.value) || 0 }))}
-                            className="bg-slate-700 border-cyan-400/50 text-cyan-100 focus:border-cyan-400"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-sm font-bold text-cyan-200 mb-2 block">🎨 Color Group</label>
+                          <label className="text-sm font-bold text-cyan-200 mb-2 block">⚙️ Space Type</label>
                           <Select 
-                            value={editingProperty.colorGroup || ''} 
-                            onValueChange={(value) => setEditingProperty(prev => ({ ...prev, colorGroup: value }))}
+                            value={editingProperty.type || 'property'} 
+                            onValueChange={(value: any) => {
+                              // Auto-adjust rent array size on type change
+                              let newRent = [0, 0, 0, 0, 0, 0];
+                              if (value === 'railroad') newRent = [25000, 50000, 100000, 200000];
+                              else if (value === 'utility') newRent = [4, 10];
+                              setEditingProperty(prev => ({ 
+                                ...prev, 
+                                type: value,
+                                rent: newRent,
+                                colorGroup: value === 'property' ? (prev.colorGroup || 'brown') : undefined,
+                                houseCost: value === 'property' ? (prev.houseCost || 50000) : undefined,
+                                hotelCost: value === 'property' ? (prev.hotelCost || 50000) : undefined
+                              }));
+                            }}
                           >
                             <SelectTrigger className="bg-slate-700 border-cyan-400/50 text-cyan-100">
-                              <SelectValue placeholder="Select color group" />
+                              <SelectValue placeholder="Select type" />
                             </SelectTrigger>
-                            <SelectContent className="bg-slate-800 border-cyan-400/50">
-                              <SelectItem value="brown" className="text-amber-300">🟤 Brown</SelectItem>
-                              <SelectItem value="lightBlue" className="text-sky-300">🔵 Light Blue</SelectItem>
-                              <SelectItem value="pink" className="text-pink-300">🟣 Pink</SelectItem>
-                              <SelectItem value="orange" className="text-orange-300">🟠 Orange</SelectItem>
-                              <SelectItem value="red" className="text-red-300">🔴 Red</SelectItem>
-                              <SelectItem value="yellow" className="text-yellow-300">🟡 Yellow</SelectItem>
-                              <SelectItem value="green" className="text-green-300">🟢 Green</SelectItem>
-                              <SelectItem value="darkBlue" className="text-blue-300">🔵 Dark Blue</SelectItem>
+                            <SelectContent className="bg-slate-800 border-cyan-400/50 text-cyan-100">
+                              <SelectItem value="property">🏠 Standard Property</SelectItem>
+                              <SelectItem value="railroad">🚂 Railroad</SelectItem>
+                              <SelectItem value="utility">⚡ Utility</SelectItem>
+                              <SelectItem value="special">✨ Special Space (GO/Tax/Jail)</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
-                        <div>
-                          <label className="text-sm font-bold text-cyan-200 mb-2 block">💰 Rent Structure</label>
-                          <div className="space-y-2">
-                            <div className="grid grid-cols-2 gap-2 text-xs">
-                              <div className="text-cyan-300">Base Rent:</div>
+
+                        {editingProperty.type === 'property' && (
+                          <div>
+                            <label className="text-sm font-bold text-cyan-200 mb-2 block">🎨 Color Group</label>
+                            <Select 
+                              value={editingProperty.colorGroup || ''} 
+                              onValueChange={(value) => setEditingProperty(prev => ({ ...prev, colorGroup: value }))}
+                            >
+                              <SelectTrigger className="bg-slate-700 border-cyan-400/50 text-cyan-100">
+                                <SelectValue placeholder="Select color group" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-slate-800 border-cyan-400/50 text-cyan-100">
+                                <SelectItem value="brown" className="text-amber-300">🟤 Brown</SelectItem>
+                                <SelectItem value="lightBlue" className="text-sky-300">🔵 Light Blue</SelectItem>
+                                <SelectItem value="pink" className="text-pink-300">🟣 Pink</SelectItem>
+                                <SelectItem value="orange" className="text-orange-300">🟠 Orange</SelectItem>
+                                <SelectItem value="red" className="text-red-300">🔴 Red</SelectItem>
+                                <SelectItem value="yellow" className="text-yellow-300">🟡 Yellow</SelectItem>
+                                <SelectItem value="green" className="text-green-300">🟢 Green</SelectItem>
+                                <SelectItem value="darkBlue" className="text-blue-300">🔵 Dark Blue</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-bold text-cyan-200 mb-2 block">💰 Current Value</label>
+                            <Input
+                              type="number"
+                              value={editingProperty.currentValue || 0}
+                              onChange={(e) => setEditingProperty(prev => ({ ...prev, currentValue: parseInt(e.target.value) || 0 }))}
+                              className="bg-slate-700 border-cyan-400/50 text-cyan-100 focus:border-cyan-400"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-bold text-cyan-200 mb-2 block">💎 Base Value</label>
+                            <Input
+                              type="number"
+                              value={editingProperty.baseValue || 0}
+                              onChange={(e) => setEditingProperty(prev => ({ ...prev, baseValue: parseInt(e.target.value) || 0 }))}
+                              className="bg-slate-700 border-cyan-400/50 text-cyan-100 focus:border-cyan-400"
+                            />
+                          </div>
+                        </div>
+
+                        {editingProperty.type === 'property' && (
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="text-sm font-bold text-cyan-200 mb-2 block">🏠 House Cost</label>
                               <Input
                                 type="number"
-                                value={editingProperty.rent?.[0] || 0}
-                                onChange={(e) => {
-                                  const newRent = [...(editingProperty.rent || [0,0,0,0,0,0])];
-                                  newRent[0] = parseInt(e.target.value) || 0;
-                                  setEditingProperty(prev => ({ ...prev, rent: newRent }));
-                                }}
-                                className="bg-slate-700 border-cyan-400/50 text-cyan-100 text-xs"
+                                value={editingProperty.houseCost || 0}
+                                onChange={(e) => setEditingProperty(prev => ({ ...prev, houseCost: parseInt(e.target.value) || 0 }))}
+                                className="bg-slate-700 border-cyan-400/50 text-cyan-100 focus:border-cyan-400"
                               />
                             </div>
-                            <div className="grid grid-cols-2 gap-2 text-xs">
-                              <div className="text-cyan-300">1 House:</div>
+                            <div>
+                              <label className="text-sm font-bold text-cyan-200 mb-2 block">🏨 Hotel Cost</label>
                               <Input
                                 type="number"
-                                value={editingProperty.rent?.[1] || 0}
-                                onChange={(e) => {
-                                  const newRent = [...(editingProperty.rent || [0,0,0,0,0,0])];
-                                  newRent[1] = parseInt(e.target.value) || 0;
-                                  setEditingProperty(prev => ({ ...prev, rent: newRent }));
-                                }}
-                                className="bg-slate-700 border-cyan-400/50 text-cyan-100 text-xs"
-                              />
-                            </div>
-                            <div className="grid grid-cols-2 gap-2 text-xs">
-                              <div className="text-cyan-300">Hotel:</div>
-                              <Input
-                                type="number"
-                                value={editingProperty.rent?.[5] || 0}
-                                onChange={(e) => {
-                                  const newRent = [...(editingProperty.rent || [0,0,0,0,0,0])];
-                                  newRent[5] = parseInt(e.target.value) || 0;
-                                  setEditingProperty(prev => ({ ...prev, rent: newRent }));
-                                }}
-                                className="bg-slate-700 border-cyan-400/50 text-cyan-100 text-xs"
+                                value={editingProperty.hotelCost || 0}
+                                onChange={(e) => setEditingProperty(prev => ({ ...prev, hotelCost: parseInt(e.target.value) || 0 }))}
+                                className="bg-slate-700 border-cyan-400/50 text-cyan-100 focus:border-cyan-400"
                               />
                             </div>
                           </div>
+                        )}
+
+                        <div>
+                          <label className="text-sm font-bold text-cyan-200 mb-2 block">💰 Rent Structure</label>
+                          <div className="bg-slate-900/60 p-3 rounded-lg border border-cyan-500/20 space-y-3">
+                            {editingProperty.type === 'property' && (
+                              <div className="grid grid-cols-2 gap-3">
+                                {[
+                                  { label: 'Base Rent', idx: 0 },
+                                  { label: '1 House Rent', idx: 1 },
+                                  { label: '2 Houses Rent', idx: 2 },
+                                  { label: '3 Houses Rent', idx: 3 },
+                                  { label: '4 Houses Rent', idx: 4 },
+                                  { label: 'Hotel Rent', idx: 5 }
+                                ].map((item) => (
+                                  <div key={item.idx} className="flex flex-col gap-1">
+                                    <span className="text-xs font-semibold text-cyan-300">{item.label}</span>
+                                    <Input
+                                      type="number"
+                                      value={editingProperty.rent?.[item.idx] || 0}
+                                      onChange={(e) => {
+                                        const newRent = [...(editingProperty.rent || [0,0,0,0,0,0])];
+                                        newRent[item.idx] = parseInt(e.target.value) || 0;
+                                        setEditingProperty(prev => ({ ...prev, rent: newRent }));
+                                      }}
+                                      className="bg-slate-700 border-cyan-400/30 text-cyan-100 text-xs h-8"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {editingProperty.type === 'railroad' && (
+                              <div className="grid grid-cols-2 gap-3">
+                                {[
+                                  { label: '1 Railroad Owned', idx: 0 },
+                                  { label: '2 Railroads Owned', idx: 1 },
+                                  { label: '3 Railroads Owned', idx: 2 },
+                                  { label: '4 Railroads Owned', idx: 3 }
+                                ].map((item) => (
+                                  <div key={item.idx} className="flex flex-col gap-1">
+                                    <span className="text-xs font-semibold text-cyan-300">{item.label}</span>
+                                    <Input
+                                      type="number"
+                                      value={editingProperty.rent?.[item.idx] || 0}
+                                      onChange={(e) => {
+                                        const newRent = [...(editingProperty.rent || [0,0,0,0])];
+                                        newRent[item.idx] = parseInt(e.target.value) || 0;
+                                        setEditingProperty(prev => ({ ...prev, rent: newRent }));
+                                      }}
+                                      className="bg-slate-700 border-cyan-400/30 text-cyan-100 text-xs h-8"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {editingProperty.type === 'utility' && (
+                              <div className="grid grid-cols-2 gap-3">
+                                {[
+                                  { label: '1 Utility Multiplier', idx: 0 },
+                                  { label: '2 Utilities Multiplier', idx: 1 }
+                                ].map((item) => (
+                                  <div key={item.idx} className="flex flex-col gap-1">
+                                    <span className="text-xs font-semibold text-cyan-300">{item.label}</span>
+                                    <Input
+                                      type="number"
+                                      value={editingProperty.rent?.[item.idx] || 0}
+                                      onChange={(e) => {
+                                        const newRent = [...(editingProperty.rent || [0,0])];
+                                        newRent[item.idx] = parseInt(e.target.value) || 0;
+                                        setEditingProperty(prev => ({ ...prev, rent: newRent }));
+                                      }}
+                                      className="bg-slate-700 border-cyan-400/30 text-cyan-100 text-xs h-8"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {editingProperty.type === 'special' && (
+                              <p className="text-xs text-slate-400 italic text-center py-2">
+                                Special spaces (GO, Tax, Jail, etc.) do not use a standard rent structure. 
+                                Taxes are calculated dynamically at 10% of total assets.
+                              </p>
+                            )}
+                          </div>
                         </div>
+
                         <Button 
                           onClick={savePropertyChanges} 
                           className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-all duration-200 hover:scale-105"

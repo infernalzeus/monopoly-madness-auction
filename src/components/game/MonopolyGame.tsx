@@ -458,10 +458,10 @@ const MonopolyGame: React.FC = () => {
       {/* Game Header */}
       <Card className="mb-6 bg-slate-900 border border-slate-800 shadow-md">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between text-slate-100">
+          <CardTitle className="flex items-center justify-between text-slate-100 w-full">
             <div className="flex flex-wrap items-center gap-3">
-              <Crown className="w-6 h-6 text-amber-500" />
-              <span className="text-2xl font-bold">Monopoly Auction</span>
+              <img src="/favicon.svg" alt="Monopoly Madness Icon" className="w-8 h-8 animate-pulse" />
+              <span className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-500">Monopoly Madness</span>
               <Badge className="bg-emerald-900/50 border-emerald-500/50 text-emerald-300 font-mono text-lg px-4 border-2 shadow-sm">
                 ROOM CODE: {lobbyCode}
               </Badge>
@@ -472,6 +472,14 @@ const MonopolyGame: React.FC = () => {
               <Badge className="bg-sky-900/50 text-sky-300 border border-sky-700/50">
                 Phase: {gameState.gamePhase}
               </Badge>
+              {isLobbyOwner && gameState.settings.allowPropertyEditing && (
+                <Button 
+                  onClick={() => setIsEditorOpen(true)}
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs h-7 px-3 border border-purple-400/50 transition-all hover:scale-105"
+                >
+                  ✏️ Edit Properties
+                </Button>
+              )}
             </div>
             
             <div className="flex items-center gap-4 text-sm">
@@ -767,6 +775,22 @@ const MonopolyGame: React.FC = () => {
           </div>
         </DrawerContent>
       </Drawer>
+
+      {/* Game Editor Console for Active Game Editing */}
+      <GameConsole
+         isOpen={isEditorOpen}
+         onClose={() => setIsEditorOpen(false)}
+         properties={gameState.properties}
+         customPropertyLists={gameState.settings.customPropertyLists || {}}
+         preAuctionProperties={gameState.settings.preAuctionProperties || []}
+         gameMode={gameState.settings.gameMode}
+         onUpdateProperty={updateProperty}
+         onUpdatePropertyList={updatePropertyList}
+         onAddPropertyToList={addPropertyToList}
+         onRemovePropertyFromList={removePropertyFromList}
+         onSetPreAuctionProperties={setPreAuctionProperties}
+         onSetGameMode={setGameMode}
+      />
     </div>
   );
 };
