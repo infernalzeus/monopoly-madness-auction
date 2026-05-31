@@ -39,18 +39,21 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
   onUnmortgage,
   allProperties
 }) => {
-  const colorGroups: Record<string, string> = {
-    'brown': 'bg-amber-800',
-    'lightBlue': 'bg-sky-300',
-    'pink': 'bg-pink-400',
-    'orange': 'bg-orange-500',
-    'red': 'bg-red-500',
-    'yellow': 'bg-yellow-400',
-    'green': 'bg-green-500',
-    'darkBlue': 'bg-blue-800'
+  const colorGroupHex: Record<string, string> = {
+    'brown': '#8B4513', 'lightBlue': '#87CEFA', 'pink': '#FF69B4',
+    'orange': '#FF8C00', 'red': '#EF4444', 'yellow': '#FFD700',
+    'green': '#22C55E', 'darkBlue': '#1D4ED8'
   };
 
-  const colorGroupClass = property.colorGroup ? colorGroups[property.colorGroup] || 'bg-gray-400' : 'bg-gray-400';
+  // Returns inline style or class for a colorGroup value (supports raw #hex too)
+  const getGroupStyle = (cg: string | null | undefined) => {
+    if (!cg) return { hex: null, cls: 'bg-gray-400' };
+    if (cg.startsWith('#')) return { hex: cg, cls: '' };
+    return { hex: colorGroupHex[cg] || null, cls: '' };
+  };
+
+  const { hex: colorHex } = getGroupStyle(property.colorGroup);
+  const colorGroupClass = colorHex ? '' : 'bg-gray-400'; // fallback only if no hex
 
   const getRentAmount = () => {
     if (property.type !== 'property') return property.rent[0];
@@ -73,7 +76,10 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
     <Card className="bg-gradient-card border-border max-w-sm">
       <CardHeader className="pb-3">
         {property.colorGroup && property.type === 'property' && (
-          <div className={`w-full h-3 rounded-t-sm -mt-2 mb-2 ${colorGroupClass} opacity-90`} />
+          <div
+            className={`w-full h-3 rounded-t-sm -mt-2 mb-2 opacity-90 ${!colorHex ? colorGroupClass : ''}`}
+            style={colorHex ? { backgroundColor: colorHex } : undefined}
+          />
         )}
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-foreground">
@@ -82,10 +88,10 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
           </CardTitle>
           {property.colorGroup && (
             <Badge
-              className={`text-[0.6rem] text-white border-0 ${colorGroupClass}`}
-              style={{ opacity: 0.9 }}
+              className="text-[0.6rem] text-white border-0"
+              style={colorHex ? { backgroundColor: colorHex, opacity: 0.9 } : { opacity: 0.9 }}
             >
-              {property.colorGroup}
+              {property.colorGroup.startsWith('#') ? 'Custom' : property.colorGroup}
             </Badge>
           )}
         </div>
@@ -185,7 +191,10 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
         {property.type === 'property' && property.colorGroup && (
           <div className="space-y-2 border-t border-border pt-3">
             <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${colorGroupClass}`} />
+              <div
+                className={`w-3 h-3 rounded-full ${!colorHex ? colorGroupClass : ''}`}
+                style={colorHex ? { backgroundColor: colorHex } : undefined}
+              />
               Color Group Bonus
             </h4>
             {allProperties ? (() => {

@@ -197,9 +197,10 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
             <img src="/favicon.svg" alt="Monopoly Madness Icon" className="w-16 h-16 sm:w-20 sm:h-20 animate-pulse" />
             Monopoly Madness
           </h1>
-          <p className="text-xl text-cyan-200 mb-8">
+          <p className="text-xl text-cyan-200 mb-2">
             Create or join a lobby to start your auction adventure!
           </p>
+          <p className="text-xs text-cyan-400/50 mb-8 font-mono tracking-wider">v1.0.9.6</p>
         </div>
 
         {/* Main Options */}
@@ -453,15 +454,15 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
 
         {/* Create Lobby Settings Dialog */}
         <Dialog open={showCreateLobby} onOpenChange={setShowCreateLobby}>
-          <DialogContent className="max-w-2xl bg-gradient-to-br from-slate-800 to-slate-900 border-2 border-cyan-400">
-            <DialogHeader>
+          <DialogContent className="max-w-2xl bg-gradient-to-br from-slate-800 to-slate-900 border-2 border-cyan-400 max-h-[92vh] flex flex-col p-0">
+            <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
               <DialogTitle className="text-2xl font-bold text-cyan-300 flex items-center gap-3">
                 <Settings className="w-6 h-6" />
                 Lobby Settings
               </DialogTitle>
             </DialogHeader>
 
-            <div className="space-y-6">
+            <div className="overflow-y-auto flex-1 px-6 pb-6 space-y-6">
               {/* Game Options */}
               <div className="space-y-4">
                 <h3 className="text-lg font-bold text-cyan-300">Game Options</h3>

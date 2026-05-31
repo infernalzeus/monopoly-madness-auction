@@ -149,8 +149,8 @@ const generateInitialProperties = (): Property[] => {
 
 const generateInitialPlayers = (): Player[] => {
   const playerNames = ['You', 'Alice', 'Bob', 'Charlie'];
-  const colors = ['#06B6D4', '#9333EA', '#F43F5E', '#F59E0B']; // cyan, purple, rose, amber
-  const icons = ['🔵', '🟣', '🌸', '🔶'];
+  const colors = ['#06B6D4', '#F43F5E', '#F59E0B', '#10B981']; // cyan, rose, amber, emerald
+  const icons = ['🔵', '🌸', '🔶', '💚'];
 
   return playerNames.map((name, index) => ({
     id: `player-${index + 1}`,

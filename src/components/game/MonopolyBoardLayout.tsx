@@ -110,16 +110,23 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
     });
   }, [players]); 
 
-  // Strong contrasting colors for the property groups
-  const colorGroups: Record<string, string> = {
-    'brown': 'bg-[#8B4513]',
-    'lightBlue': 'bg-[#87CEFA]',
-    'pink': 'bg-[#FF69B4]',
-    'orange': 'bg-[#FF8C00]',
-    'red': 'bg-[#FF0000]',
-    'yellow': 'bg-[#FFD700]',
-    'green': 'bg-[#32CD32]',
-    'darkBlue': 'bg-[#0000CD]'
+  // Named property group → hex colour mapping
+  const colorGroupHex: Record<string, string> = {
+    'brown': '#8B4513',
+    'lightBlue': '#87CEFA',
+    'pink': '#FF69B4',
+    'orange': '#FF8C00',
+    'red': '#EF4444',
+    'yellow': '#FFD700',
+    'green': '#22C55E',
+    'darkBlue': '#1D4ED8'
+  };
+
+  // Return hex for any colorGroup value (named key or raw #hex)
+  const getColorHex = (colorGroup: string | null | undefined): string | null => {
+    if (!colorGroup) return null;
+    if (colorGroup.startsWith('#')) return colorGroup;
+    return colorGroupHex[colorGroup] || null;
   };
 
   const getPlayersAtPosition = (position: number) => players.filter(p => p.position === position);
@@ -161,7 +168,7 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
             {isDiscovered ? property.name : '?'}
           </span>
           {playersHere.length > 0 && (
-            <div className="absolute inset-0 flex justify-center items-center flex-wrap gap-0.5 sm:gap-1 p-0.5 overflow-hidden z-[100]">
+            <div className="absolute inset-0 flex justify-center items-center flex-wrap gap-0.5 sm:gap-1 p-0.5 overflow-hidden z-20">
               {playersHere.map((player, idx) => (
                 <AnimatedToken key={player.id} player={player} isMoving={isMoving[player.id]} delay={idx * 100} />
               ))}
@@ -171,23 +178,23 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
       );
     }
 
-    // Property Render
-    const colorGroupClass = property.colorGroup ? colorGroups[property.colorGroup] || 'bg-slate-400' : 'bg-slate-300';
+    // Property Render — use hex-based inline styles throughout
+    const hexColor = getColorHex(property.colorGroup);
     const isHorizontal = row === 1 || row === 11;
-    const colorBarClass = property.colorGroup 
-        ? (isHorizontal ? `h-[25%] w-full ${row === 1 ? 'absolute bottom-0' : 'absolute top-0'}` 
-                        : `w-[25%] h-full ${col === 1 ? 'absolute right-0' : 'absolute left-0'}`) 
-        : '';
-        
+    const colorBarClass = property.colorGroup
+      ? (isHorizontal
+          ? `h-[25%] w-full absolute ${row === 1 ? 'bottom-0' : 'top-0'}`
+          : `w-[25%] h-full absolute ${col === 1 ? 'right-0' : 'left-0'}`)
+      : '';
+
     let padClass = 'p-0.5';
     if (property.colorGroup) {
-      if (row === 11) padClass = 'pt-[28%] px-0.5 pb-0.5'; // Bottom row
-      if (row === 1) padClass = 'pb-[28%] px-0.5 pt-0.5'; // Top row
-      if (col === 1) padClass = 'pr-[28%] py-0.5 pl-0.5'; // Left row
-      if (col === 11) padClass = 'pl-[28%] py-0.5 pr-0.5'; // Right row
+      if (row === 11) padClass = 'pt-[28%] px-0.5 pb-0.5';
+      if (row === 1) padClass = 'pb-[28%] px-0.5 pt-0.5';
+      if (col === 1) padClass = 'pr-[28%] py-0.5 pl-0.5';
+      if (col === 11) padClass = 'pl-[28%] py-0.5 pr-0.5';
     }
 
-    // Force horizontal text layout for everything so it fits better responsively
     return (
       <Card
         key={position}
@@ -196,51 +203,58 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
           ${selectedProperty?.id === property.id ? 'ring-2 ring-inset ring-blue-500 z-10' : 'hover:bg-slate-800'}
         `}
         style={{ gridRow: row, gridColumn: col }}
-         onClick={() => isDiscovered && onPropertyClick(property)}
+        onClick={() => isDiscovered && onPropertyClick(property)}
       >
-        {isDiscovered && property.colorGroup && <div className={`${colorBarClass} ${colorGroupClass} border-slate-800 z-0`} />}
-        
+        {/* Colour bar — always use inline style so custom hex colours work */}
+        {isDiscovered && hexColor && (
+          <div className={`${colorBarClass} z-0`} style={{ backgroundColor: hexColor }} />
+        )}
+
         <div className={`flex flex-col justify-between h-full w-full z-10 relative ${isDiscovered ? padClass : 'p-0.5'}`}>
-          <div className="flex flex-col items-center justify-center h-full overflow-hidden">
-            <span className="text-[0.38rem] sm:text-[0.6rem] md:text-xs lg:text-sm font-bold text-slate-200 leading-tight text-center uppercase break-words hyphens-auto w-full px-0.5 flex-1 flex items-center justify-center overflow-hidden">
+          {/* Property name — line-clamp with break-all so long city names wrap cleanly */}
+          <div className="flex items-center justify-center w-full overflow-hidden flex-1 min-h-0">
+            <p className="text-[0.34rem] sm:text-[0.48rem] font-bold text-slate-200 leading-[1.15] text-center uppercase break-all w-full line-clamp-3 overflow-hidden">
               {isDiscovered ? property.name : '???'}
-            </span>
+            </p>
           </div>
 
           {isDiscovered && (
-            <div className="flex flex-col items-center mt-auto">
-              {/* Features (Houses/Hotels) */}
+            <div className="flex flex-col items-center">
               {property.type === 'property' && (property.houses > 0 || property.hasHotel) && (
                 <div className="flex gap-px mb-0.5">
                   {property.hasHotel ? (
-                    <Hotel className="w-2 h-2 sm:w-3 sm:h-3 text-red-600" />
+                    <Hotel className="w-2 h-2 sm:w-3 sm:h-3 text-red-500" />
                   ) : (
                     Array.from({ length: property.houses }).map((_, idx) => (
-                      <Home key={idx} className="w-1.5 h-1.5 sm:w-2 sm:h-2 text-green-700" />
+                      <Home key={idx} className="w-1.5 h-1.5 sm:w-2 sm:h-2 text-green-500" />
                     ))
                   )}
                 </div>
               )}
-              
-              <span className="text-[0.45rem] sm:text-[0.6rem] md:text-xs lg:text-sm font-bold text-slate-300 tracking-tighter mt-auto">
+              <span className="text-[0.38rem] sm:text-[0.52rem] font-bold text-slate-400 tracking-tight">
                 ₹{(property.baseValue / 1000)}K
               </span>
             </div>
           )}
 
-          {/* Player Tokens overlay */}
+          {/* Player Tokens — z-20 so they sit above cell content but below fixed overlays */}
           {playersHere.length > 0 && (
-            <div className="absolute inset-0 flex justify-center items-center flex-wrap gap-0.5 pointer-events-none p-1 z-[100]">
+            <div className="absolute inset-0 flex justify-center items-center flex-wrap gap-0.5 pointer-events-none p-0.5 z-20">
               {playersHere.map((player, idx) => (
                 <AnimatedToken key={player.id} player={player} isMoving={isMoving[player.id]} delay={idx * 100} />
               ))}
             </div>
           )}
 
-          {/* Indicators overlay */}
+          {/* Ownership / auction dot */}
           {(property.isOwned || property.isInAuction) && (
             <div className="absolute top-0 right-0 p-0.5 z-10 flex gap-0.5">
-              {property.isOwned && <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full shadow-sm border border-black/20" style={{backgroundColor: players.find(p => p.name === property.owner)?.color || '#999'}} />}
+              {property.isOwned && (
+                <div
+                  className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full shadow-sm border border-black/20"
+                  style={{ backgroundColor: players.find(p => p.name === property.owner)?.color || '#999' }}
+                />
+              )}
               {property.isInAuction && <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-yellow-400 rounded-full animate-pulse" />}
             </div>
           )}

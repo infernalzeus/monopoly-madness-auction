@@ -1,5 +1,9 @@
 # 🎲 Monopoly Madness Auction - Application Architecture & Developer Manual
 
+> **Current Version: `v1.0.9.6`**  
+> Version is displayed on the lobby start screen (`LobbySystem.tsx` header) and used as the prefix for all git commit summaries.  
+> Format: `v<major>.<minor>.<patch>.<build>` — increment build on each fix, patch on each feature set, minor on design overhauls.
+
 Welcome to the **Monopoly Madness Auction** technical architecture documentation. This document serves as a comprehensive system guide, directory map, state flowchart, and developer runbook. 
 
 Whenever you need to introduce new features, tweak existing game mechanics, or debug state transitions, use this document to understand the underlying patterns, constraints, and data flows.
@@ -410,20 +414,55 @@ Owning all properties in a color group grants a **2× base rent** multiplier (no
 
 ---
 
+## ⚙️ PassGO Income Model
+
+When a player completes a full lap of the board (position wraps past 0), they receive **10% of their current cash balance** (rounded to the nearest ₹1,000) instead of a flat reward, subject to a floor of the `settings.passGoReward` amount (default ₹200,000).
+
+```
+passGoBonus = max( round(balance × 0.10 / 1000) × 1000, passGoReward )
+```
+
+This means:
+- Wealthy players earn more when passing GO, incentivising continued play.
+- Players on low cash still get at least the flat reward as a safety net.
+- A `passGo` game event is emitted with the exact amount.
+
+---
+
 ## 🎨 Player Token Colour System
 
 Player tokens use a **dedicated palette** that is visually distinct from the 8 board property colour groups (brown, lightBlue, pink, orange, red, yellow, green, darkBlue):
 
-| Token | Colour | Hex |
-|---|---|---|
-| 🔵 Cyan | Default P1 | `#06B6D4` |
-| 🟣 Purple | Default P2 / Bot | `#9333EA` |
-| 🌸 Rose | P3 | `#F43F5E` |
-| 🔶 Amber | P4 | `#F59E0B` |
-| 💚 Emerald | P5 | `#10B981` |
-| 💜 Violet | P6 | `#8B5CF6` |
+| Token | Colour | Hex | Notes |
+|---|---|---|---|
+| 🔵 Cyan | Default P1 | `#06B6D4` | Picker option 1 |
+| 🟣 Purple | P2 | `#9333EA` | Picker option 2 |
+| 🌸 Rose | P3 | `#F43F5E` | Picker option 3 |
+| 🔶 Amber | P4 | `#F59E0B` | Picker option 4 |
+| 💚 Emerald | P5 | `#10B981` | Picker option 5 |
+| 💜 Violet | P6 | `#8B5CF6` | Picker option 6 |
+| 🤖 Neon Magenta | Bot Noob | `#FF0090` | **Not in picker palette** — always unique |
+
+**Bot Noob always uses `#FF0090`** (neon magenta), which is distinct from all 6 player options and from all 8 board property color groups.
 
 Players choose their token from the colour picker **before entering the lobby** — both the Create Lobby and Join Lobby forms show 6 swatch circles. The selected colour and icon are passed through `onCreateLobby` / `onJoinLobby` props and stored in the `Player` record.
+
+### Property Group Colours (board stripes)
+
+Stored as named keys in `colorGroupHex` (MonopolyBoardLayout) and `colorGroupHex` (PropertyCard). The board renders these as **inline CSS `backgroundColor`** (not Tailwind classes), which means the Property Editor can store **any arbitrary `#RRGGBB` hex value** in `property.colorGroup` and it will render correctly on the board and in PropertyCard.
+
+| Key | Hex | Board group |
+|---|---|---|
+| `brown` | `#8B4513` | Delhi / Patna |
+| `lightBlue` | `#87CEFA` | Mumbai / Pune / Nashik |
+| `pink` | `#FF69B4` | Bangalore / Mysore / Mangalore |
+| `orange` | `#FF8C00` | Chennai / Coimbatore / Madurai |
+| `red` | `#EF4444` | Kolkata / Durgapur / Siliguri |
+| `yellow` | `#FFD700` | Gurgaon / Noida / Faridabad |
+| `green` | `#22C55E` | Hyderabad / Secunderabad / Warangal |
+| `darkBlue` | `#1D4ED8` | Indore / Bhopal |
+
+Any `#hex` value stored in `property.colorGroup` is auto-detected and rendered via inline style.
 
 ---
 

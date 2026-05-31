@@ -215,24 +215,52 @@ const GameConsole: React.FC<GameConsoleProps> = ({
                         {editingProperty.type === 'property' && (
                           <div>
                             <label className="text-sm font-bold text-cyan-200 mb-2 block">🎨 Color Group</label>
-                            <Select 
-                              value={editingProperty.colorGroup || ''} 
-                              onValueChange={(value) => setEditingProperty(prev => ({ ...prev, colorGroup: value }))}
-                            >
-                              <SelectTrigger className="bg-slate-700 border-cyan-400/50 text-cyan-100">
-                                <SelectValue placeholder="Select color group" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-slate-800 border-cyan-400/50 text-cyan-100">
-                                <SelectItem value="brown" className="text-amber-300">🟤 Brown</SelectItem>
-                                <SelectItem value="lightBlue" className="text-sky-300">🔵 Light Blue</SelectItem>
-                                <SelectItem value="pink" className="text-pink-300">🟣 Pink</SelectItem>
-                                <SelectItem value="orange" className="text-orange-300">🟠 Orange</SelectItem>
-                                <SelectItem value="red" className="text-red-300">🔴 Red</SelectItem>
-                                <SelectItem value="yellow" className="text-yellow-300">🟡 Yellow</SelectItem>
-                                <SelectItem value="green" className="text-green-300">🟢 Green</SelectItem>
-                                <SelectItem value="darkBlue" className="text-blue-300">🔵 Dark Blue</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <div className="space-y-3 bg-slate-900/40 p-3 rounded-lg border border-cyan-500/20">
+                              {/* Preset swatches */}
+                              <div className="flex flex-wrap gap-2">
+                                {[
+                                  { key: 'brown', hex: '#8B4513', label: 'Brown' },
+                                  { key: 'lightBlue', hex: '#87CEFA', label: 'Lt.Blue' },
+                                  { key: 'pink', hex: '#FF69B4', label: 'Pink' },
+                                  { key: 'orange', hex: '#FF8C00', label: 'Orange' },
+                                  { key: 'red', hex: '#EF4444', label: 'Red' },
+                                  { key: 'yellow', hex: '#FFD700', label: 'Yellow' },
+                                  { key: 'green', hex: '#22C55E', label: 'Green' },
+                                  { key: 'darkBlue', hex: '#1D4ED8', label: 'Dk.Blue' },
+                                ].map(c => (
+                                  <button
+                                    key={c.key}
+                                    type="button"
+                                    title={c.label}
+                                    onClick={() => setEditingProperty(prev => ({ ...prev, colorGroup: c.key }))}
+                                    className={`w-7 h-7 rounded border-2 transition-all hover:scale-110 ${editingProperty.colorGroup === c.key ? 'border-white ring-2 ring-cyan-400 scale-110' : 'border-slate-600'}`}
+                                    style={{ backgroundColor: c.hex }}
+                                  />
+                                ))}
+                              </div>
+                              {/* Custom color row */}
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-slate-400 whitespace-nowrap">Custom:</span>
+                                <input
+                                  type="color"
+                                  value={editingProperty.colorGroup?.startsWith('#') ? editingProperty.colorGroup : '#888888'}
+                                  onChange={(e) => setEditingProperty(prev => ({ ...prev, colorGroup: e.target.value }))}
+                                  className="w-9 h-7 rounded cursor-pointer border border-slate-600 bg-transparent p-0"
+                                />
+                                <Input
+                                  value={editingProperty.colorGroup || ''}
+                                  onChange={(e) => setEditingProperty(prev => ({ ...prev, colorGroup: e.target.value }))}
+                                  placeholder="#hex or group name"
+                                  className="bg-slate-700 border-cyan-400/50 text-cyan-100 text-xs h-7 flex-1"
+                                />
+                                {editingProperty.colorGroup && (
+                                  <div
+                                    className="w-7 h-7 rounded border border-slate-600 flex-shrink-0"
+                                    style={{ backgroundColor: editingProperty.colorGroup.startsWith('#') ? editingProperty.colorGroup : undefined }}
+                                  />
+                                )}
+                              </div>
+                            </div>
                           </div>
                         )}
 

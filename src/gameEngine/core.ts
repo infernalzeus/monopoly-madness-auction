@@ -63,11 +63,19 @@ export const rollDiceLogic = (state: GameState, diceResult: DiceRoll): GameState
 };
 
 export const movePlayer = (state: GameState, spaces: number): GameState => {
+  // Pre-compute GO bonus using pre-move balance so it isn't self-referential
+  const movingPlayerBefore = state.players.find(p => p.id === state.currentPlayer)!;
+  const newPositionCalc = (movingPlayerBefore.position + spaces) % 40;
+  const passedGo = movingPlayerBefore.position + spaces >= 40;
+  // 10% of current cash, rounded to nearest ₹1,000, minimum = flat passGoReward
+  const passGoBonus = passedGo
+    ? Math.max(Math.round(movingPlayerBefore.balance * 0.10 / 1000) * 1000, state.settings.passGoReward)
+    : 0;
+
   const players = state.players.map(player => {
     if (player.id === state.currentPlayer) {
-      const newPosition = (player.position + spaces) % 40;
-      const passedGo = player.position + spaces >= 40;
-      
+      const newPosition = newPositionCalc;
+
       // Update discovered properties
       const discoveredProperties = [...(player.discoveredProperties || [])];
       if (!discoveredProperties.includes(newPosition)) {
@@ -77,7 +85,7 @@ export const movePlayer = (state: GameState, spaces: number): GameState => {
       return {
         ...player,
         position: newPosition,
-        balance: passedGo ? player.balance + state.settings.passGoReward : player.balance,
+        balance: player.balance + passGoBonus,
         discoveredProperties
       };
     }
@@ -98,6 +106,11 @@ export const movePlayer = (state: GameState, spaces: number): GameState => {
 
   const message = `moved to ${landedProperty?.name || 'position ' + movingPlayer.position}`;
   nextState = addEvent(nextState, 'move', movingPlayer.name, message);
+
+  if (passedGo && passGoBonus > 0) {
+    nextState = addEvent(nextState, 'passGo', movingPlayer.name,
+      `passed GO! Earned 10% income: +₹${passGoBonus.toLocaleString()}`, passGoBonus);
+  }
 
   // Check rent
   if (isBuyable && landedProperty && landedProperty.isOwned && landedProperty.owner !== movingPlayer.name && !landedProperty.isMortgaged) {

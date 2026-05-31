@@ -313,7 +313,7 @@ const MonopolyGame: React.FC = () => {
           balance: settings.startingBalance || 1500000,
           properties: [],
           position: 0,
-          color: '#9333EA',
+          color: '#FF0090',  // Neon magenta — distinct from all 6 player token options
           isActive: true,
           isInJail: false,
           jailTurns: 0,
@@ -769,7 +769,7 @@ const MonopolyGame: React.FC = () => {
               </Dialog>
 
               {/* Game Log Drawer Trigger */}
-              <div className="fixed bottom-4 right-4 z-50">
+              <div className="fixed bottom-4 right-4 z-[150]">
                 <Button 
                   onClick={() => setIsLogOpen(true)} 
                   className="bg-slate-800 text-white hover:bg-slate-700 shadow-xl border border-slate-600 flex items-center gap-2 px-6 py-4 rounded-full"
@@ -815,9 +815,9 @@ const MonopolyGame: React.FC = () => {
         </div>
       </div>
 
-      {/* Bottom Drawer: Game Log */}
+      {/* Bottom Drawer: Game Log — z-[200] ensures it renders above player token z-20 tokens */}
       <Drawer open={isLogOpen} onOpenChange={setIsLogOpen}>
-        <DrawerContent className="max-h-[70vh] bg-slate-900 border-t border-slate-700">
+        <DrawerContent className="max-h-[70vh] bg-slate-900 border-t border-slate-700 z-[200]">
           <div className="mx-auto w-12 h-1 bg-slate-700 rounded-full my-4" />
           <DrawerHeader>
             <DrawerTitle className="text-white flex items-center justify-center gap-2 text-xl">
