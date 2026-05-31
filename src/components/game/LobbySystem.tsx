@@ -7,20 +7,21 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Users, 
-  Plus, 
-  Hash, 
-  Settings, 
-  Crown, 
-  Gamepad2, 
-  Gavel, 
-  Edit3, 
-  Handshake, 
+import {
+  Users,
+  Plus,
+  Hash,
+  Settings,
+  Crown,
+  Gamepad2,
+  Gavel,
+  Edit3,
+  Handshake,
   Trash2,
   AlertCircle,
   Clock,
-  Eye
+  Eye,
+  Bot
 } from 'lucide-react';
 import { Lobby, GameSettings } from '@/types/game';
 import { db } from '@/lib/firebase';
@@ -524,24 +525,45 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                   <div className="space-y-2">
-                    <Label className="text-cyan-200 font-semibold">Max Players</Label>
-                    <div className="flex gap-2">
+                    <Label className="text-cyan-200 font-semibold">Players</Label>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        type="button"
+                        variant={lobbySettings.singlePlayer ? "default" : "outline"}
+                        className={`flex-1 ${lobbySettings.singlePlayer ? 'bg-purple-600 hover:bg-purple-700 text-white border-transparent' : 'border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white'}`}
+                        onClick={() => setLobbySettings(prev => ({
+                          ...prev,
+                          singlePlayer: true,
+                          maxPlayers: 2,
+                          teamsEnabled: false
+                        }))}
+                      >
+                        <Bot className="w-3 h-3 mr-1" />
+                        1 (vs Bot)
+                      </Button>
                       {[2, 3, 4].map(num => (
                         <Button
                           key={num}
                           type="button"
-                          variant={lobbySettings.maxPlayers === num ? "default" : "outline"}
-                          className={`flex-1 ${lobbySettings.maxPlayers === num ? 'bg-cyan-600 hover:bg-cyan-700 text-white border-transparent' : 'border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white'}`}
-                          onClick={() => setLobbySettings(prev => ({ 
-                            ...prev, 
+                          variant={!lobbySettings.singlePlayer && lobbySettings.maxPlayers === num ? "default" : "outline"}
+                          className={`flex-1 ${!lobbySettings.singlePlayer && lobbySettings.maxPlayers === num ? 'bg-cyan-600 hover:bg-cyan-700 text-white border-transparent' : 'border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white'}`}
+                          onClick={() => setLobbySettings(prev => ({
+                            ...prev,
+                            singlePlayer: false,
                             maxPlayers: num,
-                            teamsEnabled: num === 2 ? false : prev.teamsEnabled 
+                            teamsEnabled: num === 2 ? false : prev.teamsEnabled
                           }))}
                         >
                           {num} Players
                         </Button>
                       ))}
                     </div>
+                    {lobbySettings.singlePlayer && (
+                      <p className="text-xs text-purple-300 flex items-center gap-1">
+                        <Bot className="w-3 h-3" />
+                        You vs Bot Noob — game starts immediately
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">

@@ -308,6 +308,32 @@ const toggleDoubleRentSetting = useCallback((enabled: boolean) => {
 
 ---
 
+## 🤖 Single Player Mode (vs Bot Noob)
+
+A fully automated bot player named **"Bot Noob"** can be selected during lobby setup as the second player for a solo game.
+
+### How to Enable
+In the Lobby Settings dialog, select **"1 (vs Bot)"** under Players. This sets `singlePlayer: true`, `maxPlayers: 2`, and disables Teams. The note "You vs Bot Noob — game starts immediately" is shown.
+
+### Startup Behavior
+When the host creates a single-player lobby (`handleCreateLobby` in [MonopolyGame.tsx](src/components/game/MonopolyGame.tsx)):
+* A second player record (`player-2`, `isBot: true`, `pieceIcon: '🤖'`) named **"Bot Noob"** is added automatically.
+* `gamePhase` is set directly to `'playing'` — the waiting room is skipped entirely.
+* The Firebase document is saved with `status: 'playing'`.
+
+### Bot Turn Automation
+A `useEffect` in `MonopolyGame.tsx` watches state changes for the bot's turns:
+
+```
+[ Bot's Turn Starts ] → wait 1.5s → rollDiceForBot()
+[ Landed Unowned ]    → wait 1.2s → 60% buy / 40% skip (random)
+[ Pending Rent ]      → wait 0.9s → payRent() (always pays)
+```
+
+`rollDiceForBot()` in `useGameLogic.ts` bypasses the `localPlayerId` equality guard that `handleDiceRoll` uses for human players, acting only when `currentPlayer.isBot === true`.
+
+---
+
 ## 🎨 Customized Branding & Active Property Editor Subsystem
 
 ### 1. Customized Brand Assets
@@ -324,6 +350,54 @@ The Property Editor is now fully wired into the game loop, moving it from a lobb
   * *Railroad*: Customizes all 4 incremental ownership levels (`[1 Owned, 2 Owned, 3 Owned, 4 Owned]`).
   * *Utility*: Customizes the 2 multipliers (`[1 Utility, 2 Utilities]`).
 * **Firestore Real-time Replication**: Save triggers immediately broadcast the modified parameters to the Firestore database. Mapped components (such as board cell labels, property cards, rent dialogs, and engine payment deductions) reactively recalculate based on the updated properties array, ensuring instant game-wide consistency.
+
+---
+
+## 🔨 Turn-Based Seller Auction
+
+When **Auction Mode** is enabled in lobby settings, players who land on an unowned property can choose to **sell it by auction** instead of buying it themselves.
+
+### Auction Flow (Turn-Based)
+```
+[ Land on Unowned ] → Buy Now | 🔨 Auction | Pass
+                                  ↓
+                      [ Set Starting Bid UI ]
+                      - Preset % buttons: 70% / 85% / 100%
+                      - Custom input
+                      - "Launch Auction" confirms
+                                  ↓
+                      [ Live Auction runs for auctionDuration ]
+                      - All other players bid
+                      - Seller CANNOT bid on their own auction
+                                  ↓
+                      [ Auction Ends ]
+                      - Winner: gets property, pays currentBid
+                      - Seller (startedBy): receives currentBid proceeds
+                      - If no bids: property stays unowned, turn advances
+```
+
+### Key Fields
+* `Auction.startedBy` (`string | null`): Name of the player who initiated the auction. When set, `endAuction()` in `useGameLogic.ts` transfers `currentBid` from winner to this player.
+* `startAuction(propertyId, startedByName?, customStartingBid?)` — accepts the initiating player name and optional starting bid.
+* Pre-auction draft phase (`preAuctionPhase: true`) has `startedBy: null`, so proceeds go to the bank (no one).
+* "Skip/Pass" on a property now always advances the turn (`turnState: 'completed'`) regardless of auction mode being on or off.
+
+---
+
+## 🏆 Color Group Monopoly Bonus
+
+Owning all properties in a color group grants a **2× base rent** multiplier (no houses needed).
+
+### How it works
+* `computeRent()` in `core.ts` already computes the monopoly bonus: if all `colorGroup` properties share the same `owner` and none are mortgaged, `rent[0] * 2` is returned.
+* The **PropertyCard** (`PropertyCard.tsx`) now shows a **Color Group Bonus** section:
+  * Color stripe header bar with the group's CSS color class.
+  * `colorGroup` badge (e.g., "brown") in the card header.
+  * List of all properties in the group with live ownership status.
+  * Yellow "🏆 MONOPOLY — [Player] earns 2× base rent" banner when achieved.
+  * Grey "Own all N for 2× base rent bonus" hint when not achieved.
+* The `allProperties?: Property[]` prop on `PropertyCard` provides the full board context for live group status.
+* **Editable via Property Editor**: the `colorGroup` field can be changed in the GameConsole Properties tab, reassigning which monopoly group a property belongs to for that session.
 
 ---
 

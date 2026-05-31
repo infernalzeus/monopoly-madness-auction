@@ -427,28 +427,31 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
     });
   }, []);
 
-  const startAuction = useCallback((propertyId: string) => {
+  const startAuction = useCallback((propertyId: string, startedByName?: string, customStartingBid?: number) => {
     const property = gameState.properties.find(p => p.id === propertyId);
     if (!property || property.isOwned || property.isInAuction) return;
 
     const duration = gameState.settings.auctionDuration;
     const startTime = Date.now();
     const endTimestamp = startTime + (duration * 1000);
+    const startingBid = customStartingBid !== undefined ? customStartingBid : Math.round(property.currentValue * 0.7);
 
     const auction: Auction = {
       propertyId,
       startTime,
       duration,
       endTimestamp,
-      currentBid: Math.round(property.currentValue * 0.7), // Start at 70% of value
+      currentBid: startingBid,
       highestBidder: null,
       bids: [],
-      isActive: true
+      isActive: true,
+      startedBy: startedByName || null
     };
 
     setGameState(prev => ({
       ...prev,
       currentAuction: auction,
+      pendingPurchase: null,
       properties: prev.properties.map(p =>
         p.id === propertyId ? { ...p, isInAuction: true } : p
       )
@@ -514,53 +517,43 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
 
   
   const endAuction = useCallback(() => {
-    if (!gameState.currentAuction) return;
-
-    const { propertyId, highestBidder, currentBid } = gameState.currentAuction;
-    
     setGameState(prev => {
+      if (!prev.currentAuction) return prev;
+      const { propertyId, highestBidder, currentBid, startedBy } = prev.currentAuction;
+
       const newProperties = prev.properties.map(p => {
         if (p.id === propertyId) {
-          if (highestBidder) {
-            return {
-              ...p,
-              isInAuction: false,
-              isOwned: true,
-              owner: highestBidder
-            };
-          } else {
-            return {
-              ...p,
-              isInAuction: false
-            };
-          }
+          return highestBidder
+            ? { ...p, isInAuction: false, isOwned: true, owner: highestBidder }
+            : { ...p, isInAuction: false };
         }
         return p;
       });
 
-      const newPlayers = highestBidder ? prev.players.map(player => {
-        if (player.name === highestBidder) {
-          return {
-            ...player,
-            balance: player.balance - currentBid,
-            properties: [...player.properties, propertyId]
-          };
-        }
-        return player;
-      }) : prev.players;
+      let newPlayers = prev.players;
+      if (highestBidder) {
+        newPlayers = prev.players.map(player => {
+          if (player.name === highestBidder) {
+            return {
+              ...player,
+              balance: player.balance - currentBid,
+              properties: [...player.properties, propertyId]
+            };
+          }
+          // Auction proceeds go to the player who initiated the auction (if any)
+          if (startedBy && player.name === startedBy && player.name !== highestBidder) {
+            return { ...player, balance: player.balance + currentBid };
+          }
+          return player;
+        });
+      }
 
-      return {
-        ...prev,
-        properties: newProperties,
-        players: newPlayers,
-        currentAuction: null
-      };
+      return { ...prev, properties: newProperties, players: newPlayers, currentAuction: null };
     });
 
     setAuctionTimer(null);
-    // Always advance turn after auction ends (double-roll rule disabled)
     advanceTurn();
-  }, [gameState.currentAuction]);
+  }, [advanceTurn]);
 
   // Auction timer effect
   useEffect(() => {
@@ -671,21 +664,15 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
     setGameState(prev => ({
       ...prev,
       pendingPurchase: null,
-      turnState: gameState.settings.auctionsEnabled ? 'waiting_for_action' : 'completed'
+      turnState: 'completed' as const
     }));
 
     if (player && property) {
-      addGameEvent('purchase', player.name, `declined buying ${property.name}`);
-      // In this new mode, the player "controls" the auction. 
-      // They can now choose to START the auction via a separate action, or just end turn.
-      // For now, let's keep it simple: if auctions are enabled, they stay in 'waiting_for_action' 
-      // where an "Auction" button should be visible.
+      addGameEvent('purchase', player.name, `passed on buying ${property.name}`);
     }
 
-    if (!gameState.settings.auctionsEnabled) {
-      advanceTurn();
-    }
-  }, [gameState.pendingPurchase, gameState.properties, gameState.players, gameState.settings.auctionsEnabled, addGameEvent, advanceTurn]);
+    setTimeout(() => advanceTurn(), 100);
+  }, [gameState.pendingPurchase, gameState.properties, gameState.players, addGameEvent, advanceTurn]);
 
   // Make a simple purchase offer to another player for a specific property
   const makeOffer = useCallback((propertyId: string, toPlayerName: string, amount: number) => {
@@ -1257,6 +1244,24 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
   }, [gameState.pendingRent, gameState.properties, gameState.currentPlayer, gameState.players, addGameEvent, advanceTurn]);
 
 
+  // Bot dice roll — bypasses localPlayerId check, only works for isBot players
+  const rollDiceForBot = useCallback(() => {
+    if (gameState.turnState !== 'waiting_for_roll') return;
+    const cp = gameState.players.find(p => p.id === gameState.currentPlayer);
+    if (!cp?.isBot) return;
+
+    const diceResult = rollDice();
+    setIsRolling(true);
+    setTimeout(() => {
+      setGameState((prev: GameState) => {
+        const cpCheck = prev.players.find(p => p.id === prev.currentPlayer);
+        if (!cpCheck?.isBot || prev.turnState !== 'waiting_for_roll') return prev;
+        return rollDiceLogic(prev, diceResult);
+      });
+      setIsRolling(false);
+    }, 800);
+  }, [gameState.currentPlayer, gameState.turnState, gameState.players, rollDice]);
+
   return {
     gameState,
     auctionTimer,
@@ -1275,6 +1280,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
     joinTeam,
     updateSettings,
     handleDiceRoll,
+    rollDiceForBot,
     buildHouse,
     sellHouse,
     buildHotel,

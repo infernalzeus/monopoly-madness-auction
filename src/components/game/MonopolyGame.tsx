@@ -66,6 +66,7 @@ const MonopolyGame: React.FC = () => {
     joinTeam,
     updateSettings,
     handleDiceRoll,
+    rollDiceForBot,
     buildHouse,
     sellHouse,
     buildHotel,
@@ -98,6 +99,41 @@ const MonopolyGame: React.FC = () => {
     console.log("Current Player ID:", gameState.currentPlayer);
     console.log("Local Player ID:", localPlayerId);
   }, [gameState.gamePhase, gameState.currentPlayer, localPlayerId]);
+
+  // Bot Noob automation — fires on every relevant state change
+  useEffect(() => {
+    const activeCp = gameState.players.find(p => p.id === gameState.currentPlayer);
+    if (!activeCp?.isBot || gameState.gamePhase !== 'playing') return;
+
+    let timer: ReturnType<typeof setTimeout>;
+
+    if (gameState.turnState === 'waiting_for_roll' && !isRolling) {
+      timer = setTimeout(() => rollDiceForBot(), 1500);
+    } else if (gameState.turnState === 'waiting_for_action') {
+      if (gameState.pendingPurchase) {
+        timer = setTimeout(() => {
+          const prop = gameState.properties.find(p => p.id === gameState.pendingPurchase!.propertyId);
+          const canAfford = prop && activeCp.balance >= prop.currentValue;
+          if (canAfford && Math.random() > 0.4) {
+            purchaseProperty(gameState.pendingPurchase!.propertyId);
+          } else {
+            skipPurchase();
+          }
+        }, 1200);
+      } else if (gameState.pendingRent) {
+        timer = setTimeout(() => payRent(), 900);
+      }
+    }
+
+    return () => { if (timer) clearTimeout(timer); };
+  }, [
+    gameState.currentPlayer,
+    gameState.turnState,
+    gameState.pendingPurchase,
+    gameState.pendingRent,
+    gameState.gamePhase,
+    isRolling
+  ]);
 
   if (!currentPlayer || !myPlayer) {
     console.log("Waiting for players...");
@@ -175,7 +211,8 @@ const MonopolyGame: React.FC = () => {
     currentBid: gameState.currentAuction.currentBid,
     highestBidder: gameState.currentAuction.highestBidder,
     timeRemaining: auctionTimer || 0,
-    bids: gameState.currentAuction.bids
+    bids: gameState.currentAuction.bids,
+    startedBy: gameState.currentAuction.startedBy || null
   } : null;
 
   // Pending purchase UI data
@@ -235,31 +272,50 @@ const MonopolyGame: React.FC = () => {
         pieceIcon: '🔴',
         discoveredProperties: [0]
       };
-      
-      const firstState: GameState = { 
-         ...initialState, 
-         players: [hostPlayer],
+
+      let players: Player[] = [hostPlayer];
+
+      if (settings.singlePlayer) {
+        const botPlayer: Player = {
+          id: 'player-2',
+          name: 'Bot Noob',
+          balance: settings.startingBalance || 1500000,
+          properties: [],
+          position: 0,
+          color: '#9333EA',
+          isActive: true,
+          isInJail: false,
+          jailTurns: 0,
+          pieceIcon: '🤖',
+          isBot: true,
+          discoveredProperties: [0]
+        };
+        players = [hostPlayer, botPlayer];
+      }
+
+      const firstState: GameState = {
+         ...initialState,
+         players,
+         gamePhase: settings.singlePlayer ? 'playing' : 'setup',
          settings: {
            ...initialState.settings,
            ...settings,
            gameMode: settings.auctionsEnabled ? 'auction' : 'classic'
          }
       };
-      
-      await setDoc(roomRef, { 
-        gameState: firstState, 
-        status: 'waiting',
+
+      await setDoc(roomRef, {
+        gameState: firstState,
+        status: settings.singlePlayer ? 'playing' : 'waiting',
         hostName: playerName,
         lastUpdated: Date.now(),
-        playerCount: 1
+        playerCount: players.length
       });
-      
+
       setLobbyCode(code);
       setLocalPlayerId('player-1');
       setIsLobbyOwner(true);
       setShowLobby(false);
-      
-      // Auto-start and pre-auction logic is handled automatically when maxPlayers is reached during joining.
     } catch (e: any) {
       console.error("Firebase Room Creation Error:", e);
       alert("Failed to create the room! Please verify your Firebase Security Rules say 'allow read, write: if true;'. Error: " + e.message);
@@ -436,7 +492,7 @@ const MonopolyGame: React.FC = () => {
           onClick={() => setSelectedProperty(null)}
         >
           <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm transform transition-all animate-in zoom-in-95 duration-200">
-            <PropertyCard 
+            <PropertyCard
               property={selectedProperty}
               isOwned={selectedProperty.isOwned}
               canBuyHouse={isMyTurn && selectedProperty.owner === myPlayer.name}
@@ -447,6 +503,7 @@ const MonopolyGame: React.FC = () => {
               onSellHotel={() => sellHotel(selectedProperty.id)}
               onMortgage={() => mortgageProperty(selectedProperty.id)}
               onUnmortgage={() => unmortgageProperty(selectedProperty.id)}
+              allProperties={gameState.properties}
             />
             <p className="text-center text-slate-400 text-xs mt-4 animate-pulse">Click anywhere to close</p>
           </div>
@@ -561,7 +618,7 @@ const MonopolyGame: React.FC = () => {
                         }
                       }}
                       onSkipPurchase={() => skipPurchase()}
-                      onStartAuction={(pid) => startAuction(pid)}
+                      onStartAuction={(pid, startingBid) => startAuction(pid, myPlayer.name, startingBid)}
                       onMakeOffer={(amount) => {
                         if (ownedPropertyOnTile) {
                           makeOffer(ownedPropertyOnTile.id, ownedPropertyOnTile.owner as string, amount);

@@ -59,6 +59,7 @@ export interface Auction {
   highestBidder: string | null;
   bids: AuctionBid[];
   isActive: boolean;
+  startedBy?: string | null; // Player name who initiated — receives proceeds when auction ends
 }
 
 export type GameMode = 'classic' | 'auction' | 'draft' | 'custom' | 'console';
@@ -92,6 +93,7 @@ export interface GameSettings {
   gameType: 'auction' | 'team-up' | 'standard';
   blindPickEnabled: boolean;
   turnTimerDuration?: number; // In seconds
+  singlePlayer?: boolean; // 1-player vs Bot Noob mode
 }
 
 export interface DiceRoll {

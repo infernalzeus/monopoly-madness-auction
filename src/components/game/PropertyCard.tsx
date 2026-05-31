@@ -23,6 +23,7 @@ interface PropertyCardProps {
   onSellHotel?: () => void;
   onMortgage?: () => void;
   onUnmortgage?: () => void;
+  allProperties?: Property[];
 }
 
 const PropertyCard: React.FC<PropertyCardProps> = ({
@@ -35,7 +36,8 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
   onSellHouse,
   onSellHotel,
   onMortgage,
-  onUnmortgage
+  onUnmortgage,
+  allProperties
 }) => {
   const colorGroups: Record<string, string> = {
     'brown': 'bg-amber-800',
@@ -70,14 +72,21 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
   return (
     <Card className="bg-gradient-card border-border max-w-sm">
       <CardHeader className="pb-3">
+        {property.colorGroup && property.type === 'property' && (
+          <div className={`w-full h-3 rounded-t-sm -mt-2 mb-2 ${colorGroupClass} opacity-90`} />
+        )}
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-foreground">
             <MapPin className="w-4 h-4 text-primary" />
             {property.name}
           </CardTitle>
-          
           {property.colorGroup && (
-            <div className={`w-4 h-4 rounded-full ${colorGroupClass}`} />
+            <Badge
+              className={`text-[0.6rem] text-white border-0 ${colorGroupClass}`}
+              style={{ opacity: 0.9 }}
+            >
+              {property.colorGroup}
+            </Badge>
           )}
         </div>
       </CardHeader>
@@ -169,6 +178,59 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
                 <span className="text-foreground">{formatCurrency(property.rent[5] || 0)}</span>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Color Group Monopoly Bonus */}
+        {property.type === 'property' && property.colorGroup && (
+          <div className="space-y-2 border-t border-border pt-3">
+            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${colorGroupClass}`} />
+              Color Group Bonus
+            </h4>
+            {allProperties ? (() => {
+              const groupProps = allProperties.filter(p => p.colorGroup === property.colorGroup && p.type === 'property');
+              const allSameOwner = groupProps.length > 0 &&
+                groupProps[0].isOwned &&
+                groupProps.every(p => p.owner === groupProps[0].owner && p.isOwned && !p.isMortgaged);
+              const monopolyOwner = allSameOwner ? groupProps[0].owner : null;
+              return (
+                <div className="space-y-1">
+                  {groupProps.map(p => (
+                    <div key={p.id} className="flex items-center justify-between text-xs">
+                      <span className={p.id === property.id ? 'font-bold text-primary' : 'text-muted-foreground'}>
+                        {p.id === property.id ? '▸ ' : '  '}{p.name}
+                      </span>
+                      <Badge
+                        variant={p.isOwned ? 'secondary' : 'outline'}
+                        className={`text-[0.6rem] py-0 ${p.isOwned ? 'bg-slate-700' : ''}`}
+                      >
+                        {p.isOwned ? p.owner : 'Unowned'}
+                      </Badge>
+                    </div>
+                  ))}
+                  <div className={`mt-2 p-2 rounded border text-center ${
+                    monopolyOwner
+                      ? 'bg-yellow-500/10 border-yellow-500/40'
+                      : 'bg-slate-800/40 border-slate-600/30'
+                  }`}>
+                    {monopolyOwner ? (
+                      <span className="text-xs text-yellow-400 font-semibold">
+                        🏆 MONOPOLY — {monopolyOwner} earns 2× base rent
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-500 italic">
+                        Own all {groupProps.length} for 2× base rent bonus
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })() : (
+              <p className="text-xs text-slate-500 italic">
+                Group: {property.colorGroup} · Own all for 2× rent
+              </p>
+            )}
           </div>
         )}
 
