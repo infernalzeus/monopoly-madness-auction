@@ -111,6 +111,15 @@ export const movePlayer = (state: GameState, spaces: number): GameState => {
     }
   }
 
+  // Go to Jail
+  if (landedProperty?.name === 'Go to Jail') {
+    const jailedPlayers = nextState.players.map(p =>
+      p.id === state.currentPlayer ? { ...p, position: 10, isInJail: true, jailTurns: 3 } : p
+    );
+    nextState = { ...nextState, players: jailedPlayers, turnState: 'completed' as const };
+    return addEvent(nextState, 'jail', movingPlayer.name, `${movingPlayer.name} was sent to Jail!`);
+  }
+
   // Check Tax (Income Tax, Luxury Tax)
   if (landedProperty && landedProperty.name.toLowerCase().includes('tax')) {
     const playerProperties = state.properties.filter(p => p.owner === movingPlayer.name);

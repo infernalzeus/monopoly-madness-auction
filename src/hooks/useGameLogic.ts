@@ -670,9 +670,8 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
     if (player && property) {
       addGameEvent('purchase', player.name, `passed on buying ${property.name}`);
     }
-
-    setTimeout(() => advanceTurn(), 100);
-  }, [gameState.pendingPurchase, gameState.properties, gameState.players, addGameEvent, advanceTurn]);
+    // Turn advancement is handled by the auto-advance useEffect (human) or bot useEffect (bot)
+  }, [gameState.pendingPurchase, gameState.properties, gameState.players, addGameEvent]);
 
   // Make a simple purchase offer to another player for a specific property
   const makeOffer = useCallback((propertyId: string, toPlayerName: string, amount: number) => {
@@ -1213,35 +1212,26 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
       pendingRent: null,
       turnState: 'completed'
     }));
-    
-    // Advance turn after rent payment
-    setTimeout(() => {
-      advanceTurn();
-    }, 100);
-  }, [gameState.pendingRent, gameState.properties, gameState.currentPlayer, gameState.players, applyPayment, addGameEvent, advanceTurn]);
+    // Turn advancement handled by auto-advance useEffect (human) or bot useEffect (bot)
+  }, [gameState.pendingRent, gameState.properties, gameState.currentPlayer, gameState.players, applyPayment, addGameEvent]);
 
   const skipRent = useCallback(() => {
     if (!gameState.pendingRent) return;
 
-    const { propertyId, owner, amount } = gameState.pendingRent;
+    const { propertyId } = gameState.pendingRent;
     const property = gameState.properties.find(p => p.id === propertyId);
-    
     if (!property) return;
 
-    addGameEvent('rent', gameState.players.find(p => p.id === gameState.currentPlayer)?.name || 'Unknown', 
-      `skipped paying rent for ${property.name} (this should not happen in normal gameplay)`);
+    addGameEvent('rent', gameState.players.find(p => p.id === gameState.currentPlayer)?.name || 'Unknown',
+      `skipped paying rent for ${property.name}`);
 
     setGameState(prev => ({
       ...prev,
       pendingRent: null,
       turnState: 'completed'
     }));
-    
-    // Advance turn after skipping rent
-    setTimeout(() => {
-      advanceTurn();
-    }, 100);
-  }, [gameState.pendingRent, gameState.properties, gameState.currentPlayer, gameState.players, addGameEvent, advanceTurn]);
+    // Turn advancement handled by auto-advance useEffect (human) or bot useEffect (bot)
+  }, [gameState.pendingRent, gameState.properties, gameState.currentPlayer, gameState.players, addGameEvent]);
 
 
   // Bot dice roll — bypasses localPlayerId check, only works for isBot players

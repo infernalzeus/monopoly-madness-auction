@@ -123,6 +123,10 @@ const MonopolyGame: React.FC = () => {
       } else if (gameState.pendingRent) {
         timer = setTimeout(() => payRent(), 900);
       }
+    } else if (gameState.turnState === 'completed') {
+      // Bot landed on special space (tax, jail, chance, free parking) or paid rent/skipped —
+      // no explicit advance was scheduled, so bot useEffect drives the turn forward.
+      timer = setTimeout(() => endTurn(), 1500);
     }
 
     return () => { if (timer) clearTimeout(timer); };
