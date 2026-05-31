@@ -341,7 +341,16 @@ A `useEffect` in `MonopolyGame.tsx` watches state changes for the bot's turns:
 * **Favicon Integration**: Linked as a modern SVG favicon in [index.html](file:///n:/Code/git%20repositories/monopoly-madness-auction/index.html) (`type="image/svg+xml"`) for perfect resolution scaling.
 * **In-Game Assets**: Integrated directly as an animated, glowing icon in the headers of [LobbySystem.tsx](file:///n:/Code/git%20repositories/monopoly-madness-auction/src/components/game/LobbySystem.tsx) and [MonopolyGame.tsx](file:///n:/Code/git%20repositories/monopoly-madness-auction/src/components/game/MonopolyGame.tsx).
 
-### 2. Connected Dynamic Property Editor
+### 2. Property Editor Persistence Fix
+
+**Root cause (now fixed):** `updateProperty` and `applyPayment` both had empty `[]` `useCallback` dependency arrays, so they captured the *initial* `setGameState` created at component mount when `roomId` is still `undefined`. Any edit was written only to local React state, not Firestore. The next game action (advanceTurn, rollDice) ran its own Firestore transaction, read the server state (without edits), and wrote it back — reverting everything.
+
+**Fix applied:**
+* `updateProperty` — added `setGameState` to deps array.
+* `applyPayment` — added `setGameState` to deps array.
+* `payRent` — consolidated into a **single `setGameState` call** (one Firestore transaction covers both the balance transfer and the `pendingRent` clear). The `addGameEvent` call is now inlined inside the state updater.
+
+### 3. Connected Dynamic Property Editor
 The Property Editor is now fully wired into the game loop, moving it from a lobby-only configuration step into a live, interactive game moderator console:
 * **Active Game Editing**: If `allowPropertyEditing` is active, the lobby host sees a live `"✏️ Edit Properties"` button in the active gameplay header. This mounts and opens the [GameConsole.tsx](file:///n:/Code/git%20repositories/monopoly-madness-auction/src/components/game/GameConsole.tsx) on-the-fly at any turn of the game.
 * **Expanded Edit Capabilities**: The host can edit the property's **Name**, **Space Type** (`'property' | 'railroad' | 'utility' | 'special'`), and **Color Group**. This redefines how properties behave with each other, allowing the creation of custom monopolies and custom board space types dynamically.
@@ -398,6 +407,39 @@ Owning all properties in a color group grants a **2× base rent** multiplier (no
   * Grey "Own all N for 2× base rent bonus" hint when not achieved.
 * The `allProperties?: Property[]` prop on `PropertyCard` provides the full board context for live group status.
 * **Editable via Property Editor**: the `colorGroup` field can be changed in the GameConsole Properties tab, reassigning which monopoly group a property belongs to for that session.
+
+---
+
+## 🎨 Player Token Colour System
+
+Player tokens use a **dedicated palette** that is visually distinct from the 8 board property colour groups (brown, lightBlue, pink, orange, red, yellow, green, darkBlue):
+
+| Token | Colour | Hex |
+|---|---|---|
+| 🔵 Cyan | Default P1 | `#06B6D4` |
+| 🟣 Purple | Default P2 / Bot | `#9333EA` |
+| 🌸 Rose | P3 | `#F43F5E` |
+| 🔶 Amber | P4 | `#F59E0B` |
+| 💚 Emerald | P5 | `#10B981` |
+| 💜 Violet | P6 | `#8B5CF6` |
+
+Players choose their token from the colour picker **before entering the lobby** — both the Create Lobby and Join Lobby forms show 6 swatch circles. The selected colour and icon are passed through `onCreateLobby` / `onJoinLobby` props and stored in the `Player` record.
+
+---
+
+## 🏢 Team Mode (Non-Spectator Alliance)
+
+Teams now keep **both players fully active** — no merging, no spectator assignment.
+
+### How it works
+* `createTeam` creates a team and assigns `teamId` to the creator's `Player` record.
+* `joinTeam` adds the joiner to `team.members` and updates their `teamId` — both players keep their own balance, properties, and turns.
+* **Combined Wealth** is displayed in the `TeamPanel` (sum of all member balances).
+* **Monopoly Bonus Synergy**: the `TeamPanel` UI notes that colour group bonuses count across teammates' properties. (Full engine-level synergy for cross-team monopoly rent multiplier is tracked as a future enhancement — the existing `computeRent` path already handles colour group monopoly; teams sharing colour groups naturally benefit if one buys a property adjacent to a teammate's.)
+
+### UI (TeamPanel.tsx)
+* **Not in a team**: Shows "Create Team" form and a list of open teams with combined team wealth.
+* **In a team**: Shows each member's name, individual balance, and a "Combined Wealth" total. Accepts `players?: Player[]` prop for member details.
 
 ---
 

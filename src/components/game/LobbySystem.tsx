@@ -29,9 +29,18 @@ import { collection, query, onSnapshot, deleteDoc, doc, orderBy, limit } from 'f
 import { useEffect } from 'react';
 
 interface LobbySystemProps {
-  onCreateLobby: (settings: GameSettings, code: string, playerName: string) => void;
-  onJoinLobby: (code: string, playerName: string) => void;
+  onCreateLobby: (settings: GameSettings, code: string, playerName: string, color: string, icon: string) => void;
+  onJoinLobby: (code: string, playerName: string, color: string, icon: string) => void;
 }
+
+const tokenOptions = [
+  { color: '#06B6D4', icon: '🔵', label: 'Cyan' },
+  { color: '#9333EA', icon: '🟣', label: 'Purple' },
+  { color: '#F43F5E', icon: '🌸', label: 'Rose' },
+  { color: '#F59E0B', icon: '🔶', label: 'Amber' },
+  { color: '#10B981', icon: '💚', label: 'Emerald' },
+  { color: '#8B5CF6', icon: '💜', label: 'Violet' },
+];
 
 const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby }) => {
   const [showCreateLobby, setShowCreateLobby] = useState(false);
@@ -40,6 +49,7 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
   const [activeGames, setActiveGames] = useState<any[]>([]);
   const [deleteCooldown, setDeleteCooldown] = useState<number | null>(null);
   const [generatedCode] = useState(() => Math.floor(100000 + Math.random() * 900000).toString());
+  const [selectedTokenIdx, setSelectedTokenIdx] = useState(0);
   const [lobbySettings, setLobbySettings] = useState<GameSettings>({
     gameMode: 'classic',
     auctionsEnabled: false,
@@ -166,13 +176,15 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
 
   const handleCreateLobby = () => {
     if (!playerName.trim()) { alert('Please enter your name to create a lobby.'); return; }
-    onCreateLobby(lobbySettings, generatedCode, playerName.substring(0, 16));
+    const token = tokenOptions[selectedTokenIdx];
+    onCreateLobby(lobbySettings, generatedCode, playerName.substring(0, 16), token.color, token.icon);
   };
 
   const handleJoinLobby = () => {
     if (!playerName.trim()) { alert('Please enter your name to join the lobby.'); return; }
     if (joinCode.length === 6) {
-      onJoinLobby(joinCode, playerName.substring(0, 16));
+      const token = tokenOptions[selectedTokenIdx];
+      onJoinLobby(joinCode, playerName.substring(0, 16), token.color, token.icon);
     }
   };
 
@@ -225,6 +237,23 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                   className="bg-slate-700 border-cyan-400/50 text-cyan-100 focus:border-cyan-400"
                   maxLength={16}
                 />
+                <div>
+                  <Label className="text-cyan-200 font-semibold text-sm mb-2 block">Token Color</Label>
+                  <div className="flex gap-2 flex-wrap">
+                    {tokenOptions.map((opt, idx) => (
+                      <button
+                        key={opt.color}
+                        type="button"
+                        title={opt.label}
+                        onClick={() => setSelectedTokenIdx(idx)}
+                        className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-base transition-transform hover:scale-110 ${selectedTokenIdx === idx ? 'border-white scale-110' : 'border-transparent opacity-60'}`}
+                        style={{ backgroundColor: opt.color }}
+                      >
+                        <span style={{ fontSize: '0.8rem' }}>{opt.icon}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <Button
@@ -285,6 +314,23 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                     className="bg-slate-700 border-green-400/50 text-green-100 focus:border-green-400"
                     maxLength={16}
                   />
+                  <div className="mt-3">
+                    <Label className="text-green-200 font-semibold text-sm mb-2 block">Token Color</Label>
+                    <div className="flex gap-2 flex-wrap">
+                      {tokenOptions.map((opt, idx) => (
+                        <button
+                          key={opt.color}
+                          type="button"
+                          title={opt.label}
+                          onClick={() => setSelectedTokenIdx(idx)}
+                          className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-base transition-transform hover:scale-110 ${selectedTokenIdx === idx ? 'border-white scale-110' : 'border-transparent opacity-60'}`}
+                          style={{ backgroundColor: opt.color }}
+                        >
+                          <span style={{ fontSize: '0.8rem' }}>{opt.icon}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -426,7 +472,7 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                       <Gavel className="w-5 h-5 text-yellow-400" />
                       <div>
                         <Label className="text-cyan-200 font-semibold">Auction Mode</Label>
-                        <p className="text-xs text-slate-400">Auction properties at game start</p>
+                        <p className="text-xs text-slate-400">Land on a property → set a starting price → other players bid → you collect the winning amount</p>
                       </div>
                     </div>
                     <Switch
@@ -442,7 +488,7 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                       <Edit3 className="w-5 h-5 text-purple-400" />
                       <div>
                         <Label className="text-cyan-200 font-semibold">Property Editor</Label>
-                        <p className="text-xs text-slate-400">Customize property names & rents</p>
+                        <p className="text-xs text-slate-400">Host edits property names, rents & colors — changes apply for this session only</p>
                       </div>
                     </div>
                     <Switch
@@ -506,7 +552,7 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                         <Eye className="w-5 h-5 text-pink-400" />
                         <div>
                           <Label className="text-cyan-200 font-semibold">Blind Pick</Label>
-                          <p className="text-xs text-slate-400">Properties hidden until discovered</p>
+                          <p className="text-xs text-slate-400">Board properties are hidden until a player lands on them</p>
                         </div>
                       </div>
                       <Switch

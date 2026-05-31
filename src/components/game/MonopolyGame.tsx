@@ -7,7 +7,6 @@ import DiceRoller from './DiceRoller';
 import GameOverview from './GameOverview';
 import PropertyCard from './PropertyCard';
 import GameConsole from './GameConsole';
-import PreAuctionPanel from './PreAuctionPanel';
 import LobbySystem from './LobbySystem';
 import TransactionNotification from './TransactionNotification';
 import TradingSystem from './TradingSystem';
@@ -77,7 +76,6 @@ const MonopolyGame: React.FC = () => {
     resetGame,
     setGameMode,
     startPreAuction,
-    endPreAuction,
     toggleConsole,
     updatePropertyList,
     addPropertyToList,
@@ -137,6 +135,35 @@ const MonopolyGame: React.FC = () => {
     gameState.pendingRent,
     gameState.gamePhase,
     isRolling
+  ]);
+
+  // Bot Noob bids on live auctions (independent of whose turn it is)
+  useEffect(() => {
+    const botPlayer = gameState.players.find(p => p.isBot);
+    if (!botPlayer || !gameState.currentAuction || gameState.gamePhase !== 'playing') return;
+
+    const auction = gameState.currentAuction;
+    // Bot doesn't bid on its own auction
+    if (auction.startedBy === botPlayer.name) return;
+    // Bot doesn't need to outbid itself
+    if (auction.highestBidder === botPlayer.name) return;
+
+    const minBid = auction.currentBid + 10000;
+    if (botPlayer.balance < minBid) return;
+
+    // ~55% chance to bid, with a random human-like delay
+    if (Math.random() > 0.45) {
+      const bidIncrement = [10000, 20000, 30000, 50000][Math.floor(Math.random() * 4)];
+      const timer = setTimeout(() => {
+        placeBid(minBid + bidIncrement, botPlayer.id);
+      }, 1800 + Math.random() * 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [
+    gameState.currentAuction?.propertyId,
+    gameState.currentAuction?.currentBid,
+    gameState.currentAuction?.highestBidder,
+    gameState.gamePhase
   ]);
 
   if (!currentPlayer || !myPlayer) {
@@ -259,7 +286,7 @@ const MonopolyGame: React.FC = () => {
     console.log('Game ended');
   };
 
-  const handleCreateLobby = async (settings: GameSettings, code: string, playerName: string) => {
+  const handleCreateLobby = async (settings: GameSettings, code: string, playerName: string, color?: string, icon?: string) => {
     try {
       const roomRef = doc(db, 'games', code);
       const initialState = getInitialState();
@@ -269,11 +296,11 @@ const MonopolyGame: React.FC = () => {
         balance: settings.startingBalance || 1500000,
         properties: [],
         position: 0,
-        color: '#DC2626',
+        color: color || '#06B6D4',
         isActive: true,
         isInJail: false,
         jailTurns: 0,
-        pieceIcon: '🔴',
+        pieceIcon: icon || '🔵',
         discoveredProperties: [0]
       };
 
@@ -326,7 +353,7 @@ const MonopolyGame: React.FC = () => {
     }
   };
 
-  const handleJoinLobby = async (code: string, playerName: string) => {
+  const handleJoinLobby = async (code: string, playerName: string, color?: string, icon?: string) => {
     try {
       const roomRef = doc(db, 'games', code);
       const snap = await getDoc(roomRef);
@@ -345,19 +372,19 @@ const MonopolyGame: React.FC = () => {
           }
           
           joinedPlayerId = `player-${state.players.length + 1}`;
-          const colors = ['#DC2626', '#2563EB', '#16A34A', '#EAB308', '#9333EA', '#F97316', '#14B8A6', '#F43F5E'];
-          const icons = ['🔴', '🔵', '🟢', '🟡', '🟣', '🟠', '💠', '💖'];
+          const colors = ['#06B6D4', '#9333EA', '#F43F5E', '#F59E0B', '#10B981', '#8B5CF6', '#EC4899', '#F97316'];
+          const icons = ['🔵', '🟣', '🌸', '🔶', '💚', '💜', '💗', '🔸'];
           const newPlayer: Player = {
             id: joinedPlayerId,
             name: playerName || `Player ${state.players.length + 1}`,
             balance: state.settings.startingBalance || 1500000,
             properties: [],
             position: 0,
-            color: colors[state.players.length] || '#000',
+            color: color || colors[state.players.length] || '#000',
             isActive: true,
             isInJail: false,
             jailTurns: 0,
-            pieceIcon: icons[state.players.length] || '👤',
+            pieceIcon: icon || icons[state.players.length] || '👤',
             discoveredProperties: [0]
           };
           
@@ -406,26 +433,6 @@ const MonopolyGame: React.FC = () => {
   const handleDismissEvent = (eventId: string) => {
     // In a real implementation, this would remove the event from the game state
     console.log('Dismissing event:', eventId);
-  };
-
-  const handleStartPreAuction = () => {
-    startPreAuction();
-  };
-
-  const handleEndPreAuction = () => {
-    endPreAuction();
-  };
-
-  const handleStartNextAuction = () => {
-    const remainingProperties = gameState.properties.filter(p => 
-      gameState.settings.preAuctionProperties.includes(p.id) && 
-      !p.isOwned && 
-      !p.isInAuction
-    );
-    
-    if (remainingProperties.length > 0) {
-      startAuction(remainingProperties[0].id);
-    }
   };
 
   // Show lobby system if not in game yet
@@ -580,7 +587,7 @@ const MonopolyGame: React.FC = () => {
             selectedProperty={selectedProperty}
             lastDiceRoll={gameState.lastDiceRoll}
             currentEvent={currentDisplayEvent}
-            currentPlayer={currentPlayer.id}
+            currentPlayer={currentPlayer.name}
             isRolling={isRolling}
             onRollDice={handleDiceRoll}
             onEndTurn={endTurn}
@@ -662,9 +669,10 @@ const MonopolyGame: React.FC = () => {
 
               {/* Team Panel - Only visible if teams enabled */}
               {gameState.settings.teamsEnabled && (
-                <TeamPanel 
+                <TeamPanel
                   currentPlayer={myPlayer}
                   teams={gameState.teams}
+                  players={gameState.players}
                   onJoinTeam={joinTeam}
                   onCreateTeam={createTeam}
                 />
@@ -677,21 +685,6 @@ const MonopolyGame: React.FC = () => {
           {/* Only show relevant panels based on game state */}
           {(gameState.gamePhase as string) !== 'setup' && (
             <>
-              {/* Pre-Auction Panel */}
-              {gameState.gamePhase === 'auction' && gameState.preAuctionPhase && (
-                <PreAuctionPanel
-                  properties={gameState.properties}
-                  preAuctionProperties={gameState.settings.preAuctionProperties}
-                  currentAuction={currentAuctionData}
-                  players={gameState.players.map(p => p.name)}
-                  currentPlayer={currentPlayer.name}
-                  onPlaceBid={placeBid}
-                  onEndAuction={() => {}}
-                  onStartNextAuction={handleStartNextAuction}
-                  onFinishPreAuction={handleEndPreAuction}
-                />
-              )}
-
               {/* Players Summary Table - Dark theme */}
               <Card className="bg-black border border-slate-800 shadow-sm">
                 <CardHeader>

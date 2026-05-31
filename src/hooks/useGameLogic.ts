@@ -149,8 +149,8 @@ const generateInitialProperties = (): Property[] => {
 
 const generateInitialPlayers = (): Player[] => {
   const playerNames = ['You', 'Alice', 'Bob', 'Charlie'];
-  const colors = ['#DC2626', '#2563EB', '#16A34A', '#EAB308']; // Red, Blue, Green, Yellow
-  const icons = ['🔴', '🔵', '🟢', '🟡'];
+  const colors = ['#06B6D4', '#9333EA', '#F43F5E', '#F59E0B']; // cyan, purple, rose, amber
+  const icons = ['🔵', '🟣', '🌸', '🔶'];
 
   return playerNames.map((name, index) => ({
     id: `player-${index + 1}`,
@@ -425,7 +425,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
 
       return { ...prev, players };
     });
-  }, []);
+  }, [setGameState]);
 
   const startAuction = useCallback((propertyId: string, startedByName?: string, customStartingBid?: number) => {
     const property = gameState.properties.find(p => p.id === propertyId);
@@ -899,8 +899,9 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
     const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayer);
     if (!currentPlayer) return;
 
+    const newTeamId = `team-${Date.now()}`;
     const newTeam: Team = {
-      id: `team-${Date.now()}`,
+      id: newTeamId,
       name: teamName,
       members: [currentPlayer.id],
       sharedBalance: 0,
@@ -909,64 +910,35 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
 
     setGameState(prev => ({
       ...prev,
-      teams: [...prev.teams, newTeam]
+      teams: [...prev.teams, newTeam],
+      players: prev.players.map(p =>
+        p.id === currentPlayer.id ? { ...p, teamId: newTeamId } : p
+      )
     }));
-  }, [gameState.currentPlayer, gameState.players]);
+  }, [gameState.currentPlayer, gameState.players, setGameState]);
 
   const joinTeam = useCallback((teamId: string) => {
     const joinerId = localPlayerId || gameState.currentPlayer;
     const cp = gameState.players.find(p => p.id === joinerId);
-    
     if (!cp) return;
 
     setGameState(prev => {
       const team = prev.teams.find(t => t.id === teamId);
       if (!team) return prev;
-      
-      const otherMemberId = team.members[0];
-      const other = prev.players.find(p => p.id === otherMemberId);
-      if (!other) return prev;
 
-      let primary: Player, secondary: Player;
-      if (cp.balance > other.balance) {
-         primary = cp;
-         secondary = other;
-      } else {
-         primary = other;
-         secondary = cp;
-      }
-
-      const newProperties = prev.properties.map(p => {
-         if (p.owner === secondary.name) {
-            return { ...p, owner: primary.name };
-         }
-         return p;
-      });
-
-      const newPlayers = prev.players.map(p => {
-         if (p.id === primary.id) {
-            return { ...p, balance: primary.balance + secondary.balance, properties: Array.from(new Set([...primary.properties, ...secondary.properties])) };
-         }
-         if (p.id === secondary.id) {
-            return { ...p, balance: 0, properties: [], isSpectator: true };
-         }
-         return p;
-      });
-
-      const newTeams = prev.teams.map(t => 
-        t.id === teamId && !t.members.includes(cp.id) 
-          ? { ...t, members: [...t.members, cp.id] } 
+      // Keep both players fully active — just update team membership
+      const newTeams = prev.teams.map(t =>
+        t.id === teamId && !t.members.includes(cp.id)
+          ? { ...t, members: [...t.members, cp.id] }
           : t
       );
-
-      return {
-         ...prev,
-         properties: newProperties,
-         players: newPlayers,
-         teams: newTeams
-      };
+      // Update each player's teamId field
+      const newPlayers = prev.players.map(p =>
+        p.id === cp.id ? { ...p, teamId } : p
+      );
+      return { ...prev, teams: newTeams, players: newPlayers };
     });
-  }, [localPlayerId, gameState.currentPlayer, gameState.players]);
+  }, [localPlayerId, gameState.currentPlayer, gameState.players, setGameState]);
 
   const updateSettings = useCallback((newSettings: Partial<GameSettings>) => {
     setGameState(prev => ({
@@ -1086,11 +1058,11 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
   const updateProperty = useCallback((propertyId: string, updates: Partial<Property>) => {
     setGameState(prev => ({
       ...prev,
-      properties: prev.properties.map(p => 
+      properties: prev.properties.map(p =>
         p.id === propertyId ? { ...p, ...updates } : p
       )
     }));
-  }, []);
+  }, [setGameState]);
 
   // Trading functions
   const createTradeOffer = useCallback((
@@ -1197,41 +1169,48 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
   // Rent payment functions
   const payRent = useCallback(() => {
     if (!gameState.pendingRent) return;
+    const property = gameState.properties.find(p => p.id === gameState.pendingRent!.propertyId);
+    const payerName = gameState.players.find(p => p.id === gameState.currentPlayer)?.name || 'Unknown';
 
-    const { propertyId, owner, amount } = gameState.pendingRent;
-    const property = gameState.properties.find(p => p.id === propertyId);
-    
-    if (!property) return;
-
-    applyPayment(gameState.currentPlayer, owner, amount, `Rent for ${property.name}`);
-    addGameEvent('rent', gameState.players.find(p => p.id === gameState.currentPlayer)?.name || 'Unknown', 
-      `paid ₹${amount.toLocaleString()} rent to ${owner} for ${property.name}`, -amount);
-
-    setGameState(prev => ({
-      ...prev,
-      pendingRent: null,
-      turnState: 'completed'
-    }));
+    setGameState(prev => {
+      if (!prev.pendingRent) return prev;
+      const { owner: rentOwner, amount: rentAmount } = prev.pendingRent;
+      let players = [...prev.players];
+      const payerIdx = players.findIndex(p => p.id === prev.currentPlayer);
+      if (payerIdx === -1) return prev;
+      players[payerIdx] = { ...players[payerIdx], balance: players[payerIdx].balance - rentAmount };
+      const receiverIdx = players.findIndex(p => p.name === rentOwner);
+      if (receiverIdx !== -1) {
+        players[receiverIdx] = { ...players[receiverIdx], balance: players[receiverIdx].balance + rentAmount };
+      }
+      const event: any = {
+        id: `event-${Date.now()}`,
+        type: 'rent',
+        player: payerName,
+        message: `paid ₹${rentAmount.toLocaleString()} rent to ${rentOwner}${property ? ` for ${property.name}` : ''}`,
+        timestamp: Date.now(),
+        amount: -rentAmount
+      };
+      return {
+        ...prev,
+        players,
+        pendingRent: null,
+        turnState: 'completed' as const,
+        gameEvents: [...prev.gameEvents.slice(-19), event]
+      };
+    });
     // Turn advancement handled by auto-advance useEffect (human) or bot useEffect (bot)
-  }, [gameState.pendingRent, gameState.properties, gameState.currentPlayer, gameState.players, applyPayment, addGameEvent]);
+  }, [gameState.pendingRent, gameState.properties, gameState.currentPlayer, gameState.players, setGameState]);
 
   const skipRent = useCallback(() => {
     if (!gameState.pendingRent) return;
-
-    const { propertyId } = gameState.pendingRent;
-    const property = gameState.properties.find(p => p.id === propertyId);
-    if (!property) return;
-
-    addGameEvent('rent', gameState.players.find(p => p.id === gameState.currentPlayer)?.name || 'Unknown',
-      `skipped paying rent for ${property.name}`);
-
     setGameState(prev => ({
       ...prev,
       pendingRent: null,
-      turnState: 'completed'
+      turnState: 'completed' as const
     }));
     // Turn advancement handled by auto-advance useEffect (human) or bot useEffect (bot)
-  }, [gameState.pendingRent, gameState.properties, gameState.currentPlayer, gameState.players, addGameEvent]);
+  }, [gameState.pendingRent, setGameState]);
 
 
   // Bot dice roll — bypasses localPlayerId check, only works for isBot players
