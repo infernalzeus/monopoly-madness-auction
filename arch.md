@@ -1,6 +1,6 @@
 # 🎲 Monopoly Madness Auction - Application Architecture & Developer Manual
 
-> **Current Version: `v1.0.9.6`**  
+> **Current Version: `v1.0.9.7`**  
 > Version is displayed on the lobby start screen (`LobbySystem.tsx` header) and used as the prefix for all git commit summaries.  
 > Format: `v<major>.<minor>.<patch>.<build>` — increment build on each fix, patch on each feature set, minor on design overhauls.
 
@@ -435,12 +435,12 @@ Player tokens use a **dedicated palette** that is visually distinct from the 8 b
 
 | Token | Colour | Hex | Notes |
 |---|---|---|---|
-| 🔵 Cyan | Default P1 | `#06B6D4` | Picker option 1 |
-| 🟣 Purple | P2 | `#9333EA` | Picker option 2 |
-| 🌸 Rose | P3 | `#F43F5E` | Picker option 3 |
-| 🔶 Amber | P4 | `#F59E0B` | Picker option 4 |
-| 💚 Emerald | P5 | `#10B981` | Picker option 5 |
-| 💜 Violet | P6 | `#8B5CF6` | Picker option 6 |
+| 🌊 Cyan | Default P1 | `#06B6D4` | Picker option 1 |
+| ⚡ Purple | P2 | `#9333EA` | Picker option 2 |
+| 🌹 Rose | P3 | `#F43F5E` | Picker option 3 |
+| ⭐ Amber | P4 | `#F59E0B` | Picker option 4 |
+| 🍀 Emerald | P5 | `#10B981` | Picker option 5 |
+| 🔮 Fuchsia | P6 | `#E879F9` | Picker option 6 — replaced former Violet (`#8B5CF6`) to eliminate duplicate purple |
 | 🤖 Neon Magenta | Bot Noob | `#FF0090` | **Not in picker palette** — always unique |
 
 **Bot Noob always uses `#FF0090`** (neon magenta), which is distinct from all 6 player options and from all 8 board property color groups.
@@ -479,6 +479,84 @@ Teams now keep **both players fully active** — no merging, no spectator assign
 ### UI (TeamPanel.tsx)
 * **Not in a team**: Shows "Create Team" form and a list of open teams with combined team wealth.
 * **In a team**: Shows each member's name, individual balance, and a "Combined Wealth" total. Accepts `players?: Player[]` prop for member details.
+
+---
+
+---
+
+## 🎨 Token Colour System (v1.0.9.7)
+
+The six picker tokens were updated to be fully distinct — the former "Violet" (`#8B5CF6`) was too close to "Purple" (`#9333EA`). It is now **Fuchsia** (`#E879F9`). Each token also has a unique emoji icon:
+
+| Token | Colour | Hex | Icon |
+|---|---|---|---|
+| 🌊 Cyan | Default P1 | `#06B6D4` | Wave |
+| ⚡ Purple | P2 | `#9333EA` | Lightning |
+| 🌹 Rose | P3 | `#F43F5E` | Rose |
+| ⭐ Amber | P4 | `#F59E0B` | Star |
+| 🍀 Emerald | P5 | `#10B981` | Clover |
+| 🔮 Fuchsia | P6 | `#E879F9` | Crystal Ball |
+
+---
+
+## 🔒 Jail Mechanics (v1.0.9.7)
+
+**Pay-to-leave system**: A jailed player cannot simply roll and continue — on their turn they must choose between paying bail or staying in jail.
+
+- **Bail fine** = 20% of the player's total current property income (sum of active rent tiers across all non-mortgaged owned properties).
+- `payJailFine()` in `useGameLogic.ts` computes the fine using `computePlayerIncome()` from `core.ts`, deducts it, and sets `isInJail: false`.
+- `skipJailTurn()` decrements `jailTurns` and marks `turnState: 'completed'`.
+- The **Jail Dialog** renders inside the board overlay whenever `isMyTurn && myPlayer.isInJail && turnState === 'waiting_for_roll'`.
+- **Jailed owners cannot collect rent**: `movePlayer()` in `core.ts` checks if the property owner is `isInJail` before creating `pendingRent`; jailed owners are skipped entirely.
+
+---
+
+## 🎲 Chance & Community Chest (v1.0.9.7)
+
+Chance and Community Chest no longer use a shuffled deck. Instead they use an **income-based roll system**:
+
+- A `?` symbol renders over each Chance/CC tile on the board (yellow tinted background).
+- When a player lands on one, `movePlayer()` in `core.ts` calls `computePlayerIncome()` and stores a `PendingCard` in `GameState.pendingCard`:
+  - `isReward = diceRoll % 2 !== 0` (odd = reward, even = penalty)
+  - `amount = Math.round(totalIncome × 0.10)`
+- The `PendingCard` dialog in `MonopolyGame.tsx` shows the income math and a Collect/Pay button.
+- `resolveCard()` in `useGameLogic.ts` applies the balance change and clears `pendingCard`.
+
+### `PendingCard` schema
+```typescript
+{ type: 'chance' | 'community'; diceRoll: number; income: number; amount: number; isReward: boolean; numProperties: number }
+```
+
+---
+
+## 👷 Workers Mode (v1.0.9.7)
+
+An optional game config mode where players assign autonomous **workers** to owned properties. Workers auto-build one house each time their owner passes GO.
+
+### Enabling
+Toggle **Workers Mode** in the Lobby Settings dialog. Sets `GameSettings.workersEnabled = true`.
+
+### Worker Data Model
+```typescript
+export interface Worker {
+  id: string;
+  ownerId: string;  // player ID
+  propertyId: string;
+  color: string;    // hex — range: black (#000) → #FFE5B4 (median) → white (#FFF)
+}
+```
+Workers are stored in `GameState.workers[]`.
+
+### Build Logic
+In `movePlayer()` (`core.ts`), when `passedGo && settings.workersEnabled`:
+- Iterates the current player's workers.
+- For each assigned property: if `houses < 4`, increments by 1; if `houses === 4`, converts to hotel.
+- One house per GO pass per worker.
+
+### UI
+- **👷 Workers** button in the game header (shown when `workersEnabled`).
+- **Worker Assignment Panel** (Dialog): lists owned properties, color picker (black → `#FFE5B4` → white gradient + custom input), Assign / Recolor / Remove buttons.
+- **WorkerFace** component (`MonopolyBoardLayout.tsx`): a tiny rounded face with blinking eyes rendered beside the property name. Uses `useEffect` for random blink timing. No other facial features.
 
 ---
 

@@ -1,4 +1,4 @@
-import { GameState, DiceRoll, Player, Property, GameEvent } from '../types/game';
+import { GameState, DiceRoll, Player, Property, GameEvent, PendingCard, Worker } from '../types/game';
 
 // Helper to add GameEvent cleanly
 export const addEvent = (state: GameState, type: GameEvent['type'], player: string, message: string, amount?: number): GameState => {
@@ -22,13 +22,13 @@ export const advanceTurn = (state: GameState): GameState => {
   const playerCount = state.players.length;
   const currentIndex = state.players.findIndex(p => p.id === state.currentPlayer);
   let nextIndex = (currentIndex + 1) % playerCount;
-  
+
   // Skip inactive players and spectators
   for (let i = 0; i < playerCount; i++) {
     if (state.players[nextIndex].isActive && !state.players[nextIndex].isSpectator) break;
     nextIndex = (nextIndex + 1) % playerCount;
   }
-  
+
   const nextPlayer = state.players[nextIndex];
   let nextState: GameState = {
     ...state,
@@ -36,10 +36,29 @@ export const advanceTurn = (state: GameState): GameState => {
     currentPlayer: nextPlayer.id,
     turnState: 'waiting_for_roll',
     lastDiceRoll: null,
-    pendingPurchase: null
+    pendingPurchase: null,
+    pendingCard: null
   };
-  
+
   return addEvent(nextState, 'move', nextPlayer.name, `Turn ${nextState.turn} - ${nextPlayer.name}'s turn`);
+};
+
+// Compute a player's total income from all owned properties (used for jail fine and card amounts)
+export const computePlayerIncome = (properties: Property[], playerName: string): { income: number; numProperties: number } => {
+  const ownedProps = properties.filter(p => p.owner === playerName && !p.isMortgaged);
+  const numProperties = ownedProps.length;
+  let income = 0;
+  ownedProps.forEach(prop => {
+    if (prop.type === 'property') {
+      if (prop.hasHotel) income += prop.rent[5] || 0;
+      else income += prop.rent[Math.max(0, prop.houses)] || 0;
+    } else if (prop.type === 'railroad') {
+      const count = ownedProps.filter(p => p.type === 'railroad').length;
+      income += prop.rent[Math.min(count - 1, 3)] || 0;
+    }
+    // utilities excluded from income calc
+  });
+  return { income, numProperties };
 };
 
 export const rollDiceLogic = (state: GameState, diceResult: DiceRoll): GameState => {
@@ -97,9 +116,28 @@ export const movePlayer = (state: GameState, spaces: number): GameState => {
   const isBuyable = landedProperty && ['property', 'railroad', 'utility'].includes(landedProperty.type);
   const shouldOfferPurchase = Boolean(isBuyable && landedProperty && !landedProperty.isOwned);
 
+  // Worker auto-build: every time the current player passes GO, each assigned worker builds one house/hotel
+  let propertiesAfterWorkers = state.properties;
+  if (passedGo && state.settings.workersEnabled && state.workers && state.workers.length > 0) {
+    const playerWorkers = state.workers.filter(w => w.ownerId === state.currentPlayer);
+    playerWorkers.forEach(worker => {
+      propertiesAfterWorkers = propertiesAfterWorkers.map(prop => {
+        if (prop.id !== worker.propertyId) return prop;
+        if (prop.owner !== movingPlayerBefore.name) return prop;
+        if (prop.isMortgaged || prop.type !== 'property') return prop;
+        if (prop.hasHotel) return prop;
+        if (!prop.colorGroup) return prop;
+        if (prop.houses < 4) return { ...prop, houses: prop.houses + 1 };
+        // 4 houses → upgrade to hotel
+        return { ...prop, hasHotel: true, houses: 0 };
+      });
+    });
+  }
+
   let nextState: GameState = {
     ...state,
     players,
+    properties: propertiesAfterWorkers,
     turnState: shouldOfferPurchase ? 'waiting_for_action' : 'completed',
     pendingPurchase: shouldOfferPurchase ? { propertyId: landedProperty!.id, playerId: state.currentPlayer } : null
   };
@@ -112,16 +150,36 @@ export const movePlayer = (state: GameState, spaces: number): GameState => {
       `passed GO! Earned 10% income: +₹${passGoBonus.toLocaleString()}`, passGoBonus);
   }
 
-  // Check rent
+  // Check rent — jailed owners cannot collect rent
   if (isBuyable && landedProperty && landedProperty.isOwned && landedProperty.owner !== movingPlayer.name && !landedProperty.isMortgaged) {
-    const rentAmount = computeRent(state.properties, landedProperty, state.lastDiceRoll?.total || 0);
-    if (rentAmount > 0) {
-      nextState = {
-        ...nextState,
-        pendingRent: { propertyId: landedProperty.id, owner: landedProperty.owner!, amount: rentAmount },
-        turnState: 'waiting_for_action'
-      };
+    const ownerPlayer = state.players.find(p => p.name === landedProperty.owner);
+    if (!ownerPlayer?.isInJail) {
+      const rentAmount = computeRent(state.properties, landedProperty, state.lastDiceRoll?.total || 0);
+      if (rentAmount > 0) {
+        nextState = {
+          ...nextState,
+          pendingRent: { propertyId: landedProperty.id, owner: landedProperty.owner!, amount: rentAmount },
+          turnState: 'waiting_for_action'
+        };
+      }
     }
+  }
+
+  // Chance / Community Chest — income-based reward or penalty
+  if (landedProperty?.name === 'Chance' || landedProperty?.name === 'Community Chest') {
+    const { income, numProperties } = computePlayerIncome(state.properties, movingPlayer.name);
+    const diceTotal = state.lastDiceRoll?.total || 0;
+    const isOdd = diceTotal % 2 !== 0;
+    const amount = Math.round(income * 0.10);
+    const pendingCard: PendingCard = {
+      type: landedProperty.name === 'Chance' ? 'chance' : 'community',
+      diceRoll: diceTotal,
+      income,
+      amount,
+      isReward: isOdd,
+      numProperties
+    };
+    nextState = { ...nextState, pendingCard, turnState: 'waiting_for_action' };
   }
 
   // Go to Jail

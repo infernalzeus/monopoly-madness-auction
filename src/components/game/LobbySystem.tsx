@@ -34,12 +34,12 @@ interface LobbySystemProps {
 }
 
 const tokenOptions = [
-  { color: '#06B6D4', icon: '🔵', label: 'Cyan' },
-  { color: '#9333EA', icon: '🟣', label: 'Purple' },
-  { color: '#F43F5E', icon: '🌸', label: 'Rose' },
-  { color: '#F59E0B', icon: '🔶', label: 'Amber' },
-  { color: '#10B981', icon: '💚', label: 'Emerald' },
-  { color: '#8B5CF6', icon: '💜', label: 'Violet' },
+  { color: '#06B6D4', icon: '🌊', label: 'Cyan' },
+  { color: '#9333EA', icon: '⚡', label: 'Purple' },
+  { color: '#F43F5E', icon: '🌹', label: 'Rose' },
+  { color: '#F59E0B', icon: '⭐', label: 'Amber' },
+  { color: '#10B981', icon: '🍀', label: 'Emerald' },
+  { color: '#E879F9', icon: '🔮', label: 'Fuchsia' },
 ];
 
 const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby }) => {
@@ -200,7 +200,7 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
           <p className="text-xl text-cyan-200 mb-2">
             Create or join a lobby to start your auction adventure!
           </p>
-          <p className="text-xs text-cyan-400/50 mb-8 font-mono tracking-wider">v1.0.9.6</p>
+          <p className="text-xs text-cyan-400/50 mb-8 font-mono tracking-wider">v1.0.9.7</p>
         </div>
 
         {/* Main Options */}
@@ -560,6 +560,22 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                         checked={lobbySettings.blindPickEnabled}
                         onCheckedChange={(checked) =>
                           setLobbySettings(prev => ({ ...prev, blindPickEnabled: checked }))
+                        }
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg border border-cyan-400/30">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl">👷</span>
+                        <div>
+                          <Label className="text-cyan-200 font-semibold">Workers Mode</Label>
+                          <p className="text-xs text-slate-400">Assign workers to properties — they auto-build one house each time you pass GO</p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={!!lobbySettings.workersEnabled}
+                        onCheckedChange={(checked) =>
+                          setLobbySettings(prev => ({ ...prev, workersEnabled: checked }))
                         }
                       />
                     </div>

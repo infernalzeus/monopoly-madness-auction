@@ -94,6 +94,23 @@ export interface GameSettings {
   blindPickEnabled: boolean;
   turnTimerDuration?: number; // In seconds
   singlePlayer?: boolean; // 1-player vs Bot Noob mode
+  workersEnabled?: boolean; // Auto house-builders that activate on GO
+}
+
+export interface Worker {
+  id: string;
+  ownerId: string; // player ID
+  propertyId: string;
+  color: string; // hex color (range: black → #FFE5B4 → white)
+}
+
+export interface PendingCard {
+  type: 'chance' | 'community';
+  diceRoll: number;
+  income: number;
+  amount: number;
+  isReward: boolean;
+  numProperties: number;
 }
 
 export interface DiceRoll {
@@ -132,6 +149,8 @@ export interface GameState {
   tradeOffers: TradeOffer[];
   pendingRent?: { propertyId: string; owner: string; amount: number } | null;
   turnEndTime?: number | null;
+  pendingCard?: PendingCard | null;
+  workers?: Worker[];
 }
 
 export interface TradeOffer {

@@ -1,9 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Property, Player, GameEvent, DiceRoll } from '@/types/game';
+import { Property, Player, GameEvent, DiceRoll, Worker } from '@/types/game';
 import { Home, Hotel, Landmark, Building } from 'lucide-react';
 import CentralDisplay from './CentralDisplay';
+
+const WorkerFace: React.FC<{ color: string }> = ({ color }) => {
+  const [blink, setBlink] = useState(false);
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout>;
+    const cycle = () => {
+      setBlink(true);
+      setTimeout(() => setBlink(false), 120);
+      t = setTimeout(cycle, 2500 + Math.random() * 2500);
+    };
+    t = setTimeout(cycle, 800 + Math.random() * 1500);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <div
+      className="w-2.5 h-2.5 rounded-full border border-black/40 relative flex-shrink-0 inline-block"
+      style={{ backgroundColor: color }}
+      title="Worker"
+    >
+      <div className="absolute inset-0 flex justify-center items-center gap-px" style={{ paddingTop: '20%' }}>
+        <div className="rounded-full bg-black/80" style={{ width: '22%', height: blink ? '4%' : '22%', transition: 'height 0.06s' }} />
+        <div className="rounded-full bg-black/80" style={{ width: '22%', height: blink ? '4%' : '22%', transition: 'height 0.06s' }} />
+      </div>
+    </div>
+  );
+};
 
 interface MonopolyBoardLayoutProps {
   properties: Property[];
@@ -28,6 +54,7 @@ interface MonopolyBoardLayoutProps {
   isMyTurn?: boolean;
   turnTimer?: number | null;
   turnTimerDuration?: number;
+  workers?: Worker[];
 }
 
 const AnimatedToken: React.FC<{ 
@@ -88,7 +115,8 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
   onTradeClick,
   isMyTurn = false,
   turnTimer = null,
-  turnTimerDuration = 0
+  turnTimerDuration = 0,
+  workers = []
 }) => {
   const [playerPositions, setPlayerPositions] = useState<Record<string, number>>({});
   const [isMoving, setIsMoving] = useState<Record<string, boolean>>({});
@@ -152,19 +180,19 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
     if (isCorner) {
       // Corner render
       let icon = null;
-      if (position === 0) icon = <span className="text-xl sm:text-3xl font-black text-emerald-600">GO</span>;
-      if (position === 10) icon = <Building className="w-5 h-5 sm:w-8 sm:h-8 text-slate-700" />;
-      if (position === 20) icon = <Landmark className="w-5 h-5 sm:w-8 sm:h-8 text-sky-600" />;
-      if (position === 30) icon = <Home className="w-5 h-5 sm:w-8 sm:h-8 text-rose-600" />;
+      if (position === 0) icon = <span className="text-lg sm:text-2xl font-black text-emerald-500">GO</span>;
+      if (position === 10) icon = <Building className="w-4 h-4 sm:w-6 sm:h-6 text-slate-500" />;
+      if (position === 20) icon = <Landmark className="w-4 h-4 sm:w-6 sm:h-6 text-sky-500" />;
+      if (position === 30) icon = <Home className="w-4 h-4 sm:w-6 sm:h-6 text-rose-500" />;
 
       return (
-        <div 
+        <div
           key={position}
-          className="bg-slate-900 text-slate-200 border border-slate-800 flex flex-col items-center justify-center p-0.5 sm:p-2 shadow-sm rounded-sm relative"
+          className="bg-slate-900 text-slate-200 border border-slate-800 flex flex-col items-center justify-center p-0.5 sm:p-1 shadow-sm rounded-sm relative overflow-hidden"
           style={{ gridRow: row, gridColumn: col }}
         >
-          {icon}
-          <span className="text-[0.5rem] sm:text-xs md:text-sm font-bold text-center mt-1 uppercase leading-tight line-clamp-2">
+          <div className="flex-shrink-0">{icon}</div>
+          <span className="text-[0.38rem] sm:text-[0.5rem] font-bold text-center mt-0.5 uppercase leading-tight break-words w-full px-0.5 overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
             {isDiscovered ? property.name : '?'}
           </span>
           {playersHere.length > 0 && (
@@ -195,12 +223,16 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
       if (col === 11) padClass = 'pl-[28%] py-0.5 pr-0.5';
     }
 
+    const isChanceOrCC = property.name === 'Chance' || property.name === 'Community Chest';
+    const workerForProp = workers.find(w => w.propertyId === property.id);
+
     return (
       <Card
         key={position}
         className={`
           cursor-pointer transition-all relative rounded-sm border border-slate-800 flex flex-col bg-slate-900
           ${selectedProperty?.id === property.id ? 'ring-2 ring-inset ring-blue-500 z-10' : 'hover:bg-slate-800'}
+          ${isChanceOrCC ? 'bg-gradient-to-b from-slate-900 to-yellow-950/20' : ''}
         `}
         style={{ gridRow: row, gridColumn: col }}
         onClick={() => isDiscovered && onPropertyClick(property)}
@@ -210,9 +242,19 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
           <div className={`${colorBarClass} z-0`} style={{ backgroundColor: hexColor }} />
         )}
 
+        {/* Chance / Community Chest ? icon */}
+        {isDiscovered && isChanceOrCC && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[5]">
+            <span className="font-black text-yellow-400/70 select-none" style={{ fontSize: 'clamp(0.5rem, 1.5vw, 1rem)', lineHeight: 1 }}>?</span>
+          </div>
+        )}
+
         <div className={`flex flex-col justify-between h-full w-full z-10 relative ${isDiscovered ? padClass : 'p-0.5'}`}>
           {/* Property name — line-clamp with break-all so long city names wrap cleanly */}
-          <div className="flex items-center justify-center w-full overflow-hidden flex-1 min-h-0">
+          <div className="flex items-center justify-center w-full overflow-hidden flex-1 min-h-0 gap-px">
+            {workerForProp && isDiscovered && (
+              <WorkerFace color={workerForProp.color} />
+            )}
             <p className="text-[0.34rem] sm:text-[0.48rem] font-bold text-slate-200 leading-[1.15] text-center uppercase break-all w-full line-clamp-3 overflow-hidden">
               {isDiscovered ? property.name : '???'}
             </p>
@@ -231,9 +273,11 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
                   )}
                 </div>
               )}
-              <span className="text-[0.38rem] sm:text-[0.52rem] font-bold text-slate-400 tracking-tight">
-                ₹{(property.baseValue / 1000)}K
-              </span>
+              {!isChanceOrCC && (
+                <span className="text-[0.38rem] sm:text-[0.52rem] font-bold text-slate-400 tracking-tight">
+                  ₹{(property.baseValue / 1000)}K
+                </span>
+              )}
             </div>
           )}
 

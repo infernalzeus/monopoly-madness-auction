@@ -1,19 +1,20 @@
 import { useState, useCallback, useEffect } from 'react';
 import { db } from '../lib/firebase';
 import { doc, onSnapshot, runTransaction, setDoc, getDoc } from 'firebase/firestore';
-import { rollDiceLogic, movePlayer, handlePropertyPurchase, advanceTurn as advanceTurnLogic, checkWinCondition, computeRent as computeRentLogic } from '../gameEngine/core';
-import { 
-  GameState, 
-  Property, 
-  Player, 
-  Auction, 
-  GameSettings, 
+import { rollDiceLogic, movePlayer, handlePropertyPurchase, advanceTurn as advanceTurnLogic, checkWinCondition, computeRent as computeRentLogic, computePlayerIncome } from '../gameEngine/core';
+import {
+  GameState,
+  Property,
+  Player,
+  Auction,
+  GameSettings,
   Team,
   AuctionBid,
   DiceRoll,
   GameEvent,
   GameMode,
-  TradeOffer
+  TradeOffer,
+  Worker
 } from '@/types/game';
 
 const initialGameSettings: GameSettings = {
@@ -186,7 +187,9 @@ export const getInitialState = (): GameState => ({
     preAuctionPhase: false,
     consoleOpen: true,
     tradeOffers: [],
-    pendingRent: null
+    pendingRent: null,
+    pendingCard: null,
+    workers: []
   });
 
 export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
@@ -891,7 +894,9 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
       preAuctionPhase: false,
       consoleOpen: false,
       tradeOffers: [],
-      pendingRent: null
+      pendingRent: null,
+      pendingCard: null,
+      workers: []
     });
   }, []);
 
@@ -1209,9 +1214,115 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
       pendingRent: null,
       turnState: 'completed' as const
     }));
-    // Turn advancement handled by auto-advance useEffect (human) or bot useEffect (bot)
   }, [gameState.pendingRent, setGameState]);
 
+  // Jail: pay 20% of property income to leave; if they can't afford or skip, decrement jailTurns
+  const payJailFine = useCallback(() => {
+    const cp = gameState.players.find(p => p.id === gameState.currentPlayer);
+    if (!cp || !cp.isInJail) return;
+    const { income } = computePlayerIncome(gameState.properties, cp.name);
+    const fine = Math.round(income * 0.20);
+    if (fine <= 0 || cp.balance < fine) return;
+    setGameState(prev => ({
+      ...prev,
+      players: prev.players.map(p =>
+        p.id === prev.currentPlayer
+          ? { ...p, balance: p.balance - fine, isInJail: false, jailTurns: 0 }
+          : p
+      )
+    }));
+    addGameEvent('jail', cp.name, `paid ₹${fine.toLocaleString()} jail fine (20% of ₹${income.toLocaleString()} property income)`, -fine);
+  }, [gameState.players, gameState.currentPlayer, gameState.properties, addGameEvent, setGameState]);
+
+  const skipJailTurn = useCallback(() => {
+    const cp = gameState.players.find(p => p.id === gameState.currentPlayer);
+    if (!cp || !cp.isInJail) return;
+    const remaining = Math.max(0, (cp.jailTurns || 0) - 1);
+    setGameState(prev => ({
+      ...prev,
+      players: prev.players.map(p =>
+        p.id === prev.currentPlayer
+          ? { ...p, jailTurns: remaining, isInJail: remaining > 0 }
+          : p
+      ),
+      turnState: 'completed' as const
+    }));
+    addGameEvent('jail', cp.name, remaining > 0 ? `stayed in jail (${remaining} turns left)` : 'released from jail (served time)');
+  }, [gameState.currentPlayer, gameState.players, addGameEvent, setGameState]);
+
+  // Compute jail fine amount for display
+  const getJailFineAmount = useCallback((): { fine: number; income: number } => {
+    const cp = gameState.players.find(p => p.id === gameState.currentPlayer);
+    if (!cp) return { fine: 0, income: 0 };
+    const { income } = computePlayerIncome(gameState.properties, cp.name);
+    return { fine: Math.round(income * 0.20), income };
+  }, [gameState.currentPlayer, gameState.players, gameState.properties]);
+
+  // Resolve pending card (Chance or Community Chest)
+  const resolveCard = useCallback(() => {
+    const pc = gameState.pendingCard;
+    if (!pc) return;
+    const cp = gameState.players.find(p => p.id === gameState.currentPlayer);
+    if (!cp) return;
+    if (pc.amount > 0) {
+      if (pc.isReward) {
+        setGameState(prev => ({
+          ...prev,
+          players: prev.players.map(p =>
+            p.id === prev.currentPlayer ? { ...p, balance: p.balance + pc.amount } : p
+          ),
+          pendingCard: null,
+          turnState: 'completed' as const
+        }));
+        addGameEvent('card', cp.name,
+          `${pc.type === 'chance' ? 'Chance' : 'Community Chest'} (roll ${pc.diceRoll} — odd): +₹${pc.amount.toLocaleString()} from ${pc.numProperties} properties`,
+          pc.amount);
+      } else {
+        applyPayment(gameState.currentPlayer, null, pc.amount, `${pc.type} penalty`);
+        setGameState(prev => ({ ...prev, pendingCard: null, turnState: 'completed' as const }));
+        addGameEvent('card', cp.name,
+          `${pc.type === 'chance' ? 'Chance' : 'Community Chest'} (roll ${pc.diceRoll} — even): -₹${pc.amount.toLocaleString()} from ${pc.numProperties} properties`,
+          -pc.amount);
+      }
+    } else {
+      // No properties — just skip
+      setGameState(prev => ({ ...prev, pendingCard: null, turnState: 'completed' as const }));
+      addGameEvent('card', cp.name,
+        `${pc.type === 'chance' ? 'Chance' : 'Community Chest'} (roll ${pc.diceRoll}): No properties — no reward/penalty`);
+    }
+  }, [gameState.pendingCard, gameState.currentPlayer, gameState.players, applyPayment, addGameEvent, setGameState]);
+
+  // Workers: assign/remove
+  const assignWorker = useCallback((propertyId: string, color: string) => {
+    const cp = gameState.players.find(p => p.id === gameState.currentPlayer);
+    if (!cp) return;
+    const property = gameState.properties.find(p => p.id === propertyId);
+    if (!property || property.owner !== cp.name || property.type !== 'property') return;
+    const existing = (gameState.workers || []).find(w => w.propertyId === propertyId);
+    if (existing) return;
+    const newWorker: Worker = {
+      id: `worker-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      ownerId: cp.id,
+      propertyId,
+      color
+    };
+    setGameState(prev => ({ ...prev, workers: [...(prev.workers || []), newWorker] }));
+    addGameEvent('build', cp.name, `assigned a worker to ${property.name}`);
+  }, [gameState.players, gameState.currentPlayer, gameState.properties, gameState.workers, addGameEvent, setGameState]);
+
+  const removeWorker = useCallback((propertyId: string) => {
+    const cp = gameState.players.find(p => p.id === gameState.currentPlayer);
+    const property = gameState.properties.find(p => p.id === propertyId);
+    setGameState(prev => ({ ...prev, workers: (prev.workers || []).filter(w => w.propertyId !== propertyId) }));
+    if (cp && property) addGameEvent('build', cp.name, `removed worker from ${property.name}`);
+  }, [gameState.currentPlayer, gameState.players, gameState.properties, addGameEvent, setGameState]);
+
+  const updateWorkerColor = useCallback((propertyId: string, color: string) => {
+    setGameState(prev => ({
+      ...prev,
+      workers: (prev.workers || []).map(w => w.propertyId === propertyId ? { ...w, color } : w)
+    }));
+  }, [setGameState]);
 
   // Bot dice roll — bypasses localPlayerId check, only works for isBot players
   const rollDiceForBot = useCallback(() => {
@@ -1274,7 +1385,17 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
     rejectTradeOffer,
     // Rent payment functions
     payRent,
-    skipRent
+    skipRent,
+    // Jail functions
+    payJailFine,
+    skipJailTurn,
+    getJailFineAmount,
+    // Card resolution
+    resolveCard,
+    // Worker functions
+    assignWorker,
+    removeWorker,
+    updateWorkerColor
   };
 };
 
