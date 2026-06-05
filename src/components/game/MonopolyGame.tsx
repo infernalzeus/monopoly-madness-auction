@@ -6,6 +6,8 @@ import PlayerPanel from './PlayerPanel';
 import DiceRoller from './DiceRoller';
 import GameOverview from './GameOverview';
 import PropertyCard from './PropertyCard';
+import SpecialPropertyInfo from './SpecialPropertyInfo';
+import RulesPanel from './RulesPanel';
 import GameConsole from './GameConsole';
 import LobbySystem from './LobbySystem';
 import TransactionNotification from './TransactionNotification';
@@ -50,6 +52,8 @@ const MonopolyGame: React.FC = () => {
   const [isWorkerPanelOpen, setIsWorkerPanelOpen] = useState(false);
   const [workerPickColor, setWorkerPickColor] = useState('#FFE5B4');
   const [workerPickPropertyId, setWorkerPickPropertyId] = useState<string | null>(null);
+  const [showRules, setShowRules] = useState(false);
+  const [selectedSpecialProperty, setSelectedSpecialProperty] = useState<Property | null>(null);
   
   const {
     gameState,
@@ -117,21 +121,22 @@ const MonopolyGame: React.FC = () => {
 
     if (gameState.turnState === 'waiting_for_roll' && !isRolling) {
       if (activeCp.isInJail) {
-        // Bot: 50% chance to pay fine if affordable, otherwise skip
+        // Bot: always pay fine if affordable, otherwise skip (no random — avoids getting stuck)
         timer = setTimeout(() => {
           const { fine } = getJailFineAmount();
-          if (fine > 0 && activeCp.balance >= fine && Math.random() > 0.5) {
+          if (fine > 0 && activeCp.balance >= fine) {
             payJailFine();
           } else {
             skipJailTurn();
           }
-        }, 1200);
+        }, 900);
       } else {
-        timer = setTimeout(() => rollDiceForBot(), 1500);
+        timer = setTimeout(() => rollDiceForBot(), 1200);
       }
     } else if (gameState.turnState === 'waiting_for_action') {
       if (gameState.pendingCard) {
-        timer = setTimeout(() => resolveCard(), 1000);
+        // Always resolve cards immediately for bot
+        timer = setTimeout(() => resolveCard(), 800);
       } else if (gameState.pendingPurchase) {
         timer = setTimeout(() => {
           const prop = gameState.properties.find(p => p.id === gameState.pendingPurchase!.propertyId);
@@ -143,10 +148,13 @@ const MonopolyGame: React.FC = () => {
           }
         }, 1200);
       } else if (gameState.pendingRent) {
-        timer = setTimeout(() => payRent(), 900);
+        timer = setTimeout(() => payRent(), 700);
+      } else {
+        // Stuck in waiting_for_action with nothing pending — force advance
+        timer = setTimeout(() => endTurn(), 1200);
       }
     } else if (gameState.turnState === 'completed') {
-      timer = setTimeout(() => endTurn(), 1500);
+      timer = setTimeout(() => endTurn(), 1200);
     }
 
     return () => { if (timer) clearTimeout(timer); };
@@ -157,6 +165,7 @@ const MonopolyGame: React.FC = () => {
     gameState.pendingRent,
     gameState.pendingCard,
     gameState.gamePhase,
+    gameState.players, // include so isInJail changes re-trigger
     isRolling
   ]);
 
@@ -294,7 +303,11 @@ const MonopolyGame: React.FC = () => {
   const ownedPropertyOnTile = gameState.settings.auctionsEnabled && propertyOnTile && propertyOnTile.isOwned && propertyOnTile.owner !== currentPlayer.name ? propertyOnTile : null;
 
   const handlePropertyClick = (property: Property) => {
-    setSelectedProperty(property);
+    if (property.type === 'special') {
+      setSelectedSpecialProperty(property);
+    } else {
+      setSelectedProperty(property);
+    }
   };
 
   const handleStartAuction = (propertyId: string) => {
@@ -404,8 +417,8 @@ const MonopolyGame: React.FC = () => {
           }
           
           joinedPlayerId = `player-${state.players.length + 1}`;
-          const colors = ['#06B6D4', '#9333EA', '#F43F5E', '#F59E0B', '#10B981', '#8B5CF6', '#EC4899', '#F97316'];
-          const icons = ['🔵', '🟣', '🌸', '🔶', '💚', '💜', '💗', '🔸'];
+          const colors = ['#00C8E0', '#7C3AED', '#F43F5E', '#F59E0B', '#10B981', '#EC4899', '#F97316', '#06B6D4'];
+          const icons = ['🌊', '⚡', '🌹', '⭐', '🍀', '🔮', '🔸', '🌐'];
           const newPlayer: Player = {
             id: joinedPlayerId,
             name: playerName || `Player ${state.players.length + 1}`,
@@ -522,6 +535,24 @@ const MonopolyGame: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 p-4 text-slate-100">
+      {/* Rules Panel */}
+      {showRules && (
+        <RulesPanel settings={gameState.settings} onClose={() => setShowRules(false)} />
+      )}
+
+      {/* Special Property Info Overlay */}
+      {selectedSpecialProperty && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          onClick={() => setSelectedSpecialProperty(null)}
+        >
+          <div className="w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <SpecialPropertyInfo property={selectedSpecialProperty} players={gameState.players} />
+            <p className="text-center text-slate-400 text-xs mt-3 animate-pulse">Click anywhere to close</p>
+          </div>
+        </div>
+      )}
+
       {/* Transaction Notifications */}
       <TransactionNotification 
         events={gameState.gameEvents}
@@ -588,6 +619,12 @@ const MonopolyGame: React.FC = () => {
                   👷 Workers
                 </Button>
               )}
+              <Button
+                onClick={() => setShowRules(true)}
+                className="bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs h-7 px-3 border border-slate-500/60 transition-all hover:scale-105"
+              >
+                📖 Rules
+              </Button>
             </div>
             
             <div className="flex items-center gap-4 text-sm">
@@ -764,6 +801,8 @@ const MonopolyGame: React.FC = () => {
                 currentPlayer={myPlayer}
                 allPlayers={gameState.players}
                 ownedProperties={myOwnedProperties}
+                workers={gameState.workers || []}
+                workersEnabled={gameState.settings.workersEnabled}
                 onMortgage={mortgageProperty}
                 onUnmortgage={unmortgageProperty}
                 onSell={handleSellProperty}
@@ -1019,7 +1058,7 @@ const MonopolyGame: React.FC = () => {
             </DrawerTitle>
           </DrawerHeader>
           <div className="p-4 overflow-y-auto custom-scrollbar">
-            <GameLog events={gameState.gameEvents} />
+            <GameLog events={gameState.gameEvents} players={gameState.players} />
           </div>
         </DrawerContent>
       </Drawer>

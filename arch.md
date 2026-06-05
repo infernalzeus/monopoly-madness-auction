@@ -490,12 +490,12 @@ The six picker tokens were updated to be fully distinct — the former "Violet" 
 
 | Token | Colour | Hex | Icon |
 |---|---|---|---|
-| 🌊 Cyan | Default P1 | `#06B6D4` | Wave |
-| ⚡ Purple | P2 | `#9333EA` | Lightning |
+| 🌊 Cyan | Default P1 | `#00C8E0` | Wave — vivid cyan |
+| ⚡ Violet | P2 | `#7C3AED` | Lightning — deep indigo-violet |
 | 🌹 Rose | P3 | `#F43F5E` | Rose |
 | ⭐ Amber | P4 | `#F59E0B` | Star |
-| 🍀 Emerald | P5 | `#10B981` | Clover |
-| 🔮 Fuchsia | P6 | `#E879F9` | Crystal Ball |
+| 🍀 Emerald | P5 | `#10B981` | Clover — unchanged (user favourite) |
+| 🔮 Pink | P6 | `#EC4899` | Crystal Ball — hot pink, distinct from violet |
 
 ---
 

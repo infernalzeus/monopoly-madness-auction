@@ -34,12 +34,12 @@ interface LobbySystemProps {
 }
 
 const tokenOptions = [
-  { color: '#06B6D4', icon: '🌊', label: 'Cyan' },
-  { color: '#9333EA', icon: '⚡', label: 'Purple' },
-  { color: '#F43F5E', icon: '🌹', label: 'Rose' },
-  { color: '#F59E0B', icon: '⭐', label: 'Amber' },
-  { color: '#10B981', icon: '🍀', label: 'Emerald' },
-  { color: '#E879F9', icon: '🔮', label: 'Fuchsia' },
+  { color: '#00C8E0', icon: '🌊', label: 'Cyan' },      // vivid cyan
+  { color: '#7C3AED', icon: '⚡', label: 'Violet' },    // deep indigo-violet (distinct from fuchsia)
+  { color: '#F43F5E', icon: '🌹', label: 'Rose' },      // keep
+  { color: '#F59E0B', icon: '⭐', label: 'Amber' },     // keep
+  { color: '#10B981', icon: '🍀', label: 'Emerald' },   // keep (user's favourite)
+  { color: '#EC4899', icon: '🔮', label: 'Pink' },      // hot pink — clearly different from violet
 ];
 
 const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby }) => {

@@ -1258,39 +1258,54 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
     return { fine: Math.round(income * 0.20), income };
   }, [gameState.currentPlayer, gameState.players, gameState.properties]);
 
-  // Resolve pending card (Chance or Community Chest)
+  // Resolve pending card — single atomic setGameState to avoid race conditions
   const resolveCard = useCallback(() => {
-    const pc = gameState.pendingCard;
-    if (!pc) return;
-    const cp = gameState.players.find(p => p.id === gameState.currentPlayer);
-    if (!cp) return;
-    if (pc.amount > 0) {
-      if (pc.isReward) {
-        setGameState(prev => ({
-          ...prev,
-          players: prev.players.map(p =>
-            p.id === prev.currentPlayer ? { ...p, balance: p.balance + pc.amount } : p
-          ),
-          pendingCard: null,
-          turnState: 'completed' as const
-        }));
-        addGameEvent('card', cp.name,
-          `${pc.type === 'chance' ? 'Chance' : 'Community Chest'} (roll ${pc.diceRoll} — odd): +₹${pc.amount.toLocaleString()} from ${pc.numProperties} properties`,
-          pc.amount);
-      } else {
-        applyPayment(gameState.currentPlayer, null, pc.amount, `${pc.type} penalty`);
-        setGameState(prev => ({ ...prev, pendingCard: null, turnState: 'completed' as const }));
-        addGameEvent('card', cp.name,
-          `${pc.type === 'chance' ? 'Chance' : 'Community Chest'} (roll ${pc.diceRoll} — even): -₹${pc.amount.toLocaleString()} from ${pc.numProperties} properties`,
-          -pc.amount);
+    setGameState(prev => {
+      const pc = prev.pendingCard;
+      if (!pc) return prev;
+      const cp = prev.players.find(p => p.id === prev.currentPlayer);
+      if (!cp) return prev;
+
+      const cardLabel = pc.type === 'chance' ? 'Chance' : 'Community Chest';
+      const rollLabel = `roll ${pc.diceRoll} — ${pc.diceRoll % 2 !== 0 ? 'odd' : 'even'}`;
+
+      const event: GameEvent = {
+        id: `event-${Date.now()}-${Math.random()}`,
+        type: 'card',
+        player: cp.name,
+        message: pc.amount > 0
+          ? `${cardLabel} (${rollLabel}): ${pc.isReward ? '+' : '-'}₹${pc.amount.toLocaleString()} from ${pc.numProperties} prop${pc.numProperties !== 1 ? 's' : ''}`
+          : `${cardLabel} (${rollLabel}): No properties — no change`,
+        timestamp: Date.now(),
+        amount: pc.amount > 0 ? (pc.isReward ? pc.amount : -pc.amount) : undefined
+      };
+
+      if (pc.amount <= 0) {
+        return { ...prev, pendingCard: null, turnState: 'completed' as const, gameEvents: [...prev.gameEvents.slice(-19), event] };
       }
-    } else {
-      // No properties — just skip
-      setGameState(prev => ({ ...prev, pendingCard: null, turnState: 'completed' as const }));
-      addGameEvent('card', cp.name,
-        `${pc.type === 'chance' ? 'Chance' : 'Community Chest'} (roll ${pc.diceRoll}): No properties — no reward/penalty`);
-    }
-  }, [gameState.pendingCard, gameState.currentPlayer, gameState.players, applyPayment, addGameEvent, setGameState]);
+
+      let players = prev.players.map(p => {
+        if (p.id !== prev.currentPlayer) return p;
+        return { ...p, balance: p.balance + (pc.isReward ? pc.amount : -pc.amount) };
+      });
+
+      // Check bankruptcy if penalty
+      if (!pc.isReward) {
+        const payerIdx = players.findIndex(p => p.id === prev.currentPlayer);
+        if (payerIdx !== -1 && players[payerIdx].balance < 0) {
+          players[payerIdx] = { ...players[payerIdx], isActive: false };
+        }
+      }
+
+      return {
+        ...prev,
+        players,
+        pendingCard: null,
+        turnState: 'completed' as const,
+        gameEvents: [...prev.gameEvents.slice(-19), event]
+      };
+    });
+  }, [setGameState]);
 
   // Workers: assign/remove
   const assignWorker = useCallback((propertyId: string, color: string) => {

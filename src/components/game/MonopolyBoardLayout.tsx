@@ -5,31 +5,6 @@ import { Property, Player, GameEvent, DiceRoll, Worker } from '@/types/game';
 import { Home, Hotel, Landmark, Building } from 'lucide-react';
 import CentralDisplay from './CentralDisplay';
 
-const WorkerFace: React.FC<{ color: string }> = ({ color }) => {
-  const [blink, setBlink] = useState(false);
-  useEffect(() => {
-    let t: ReturnType<typeof setTimeout>;
-    const cycle = () => {
-      setBlink(true);
-      setTimeout(() => setBlink(false), 120);
-      t = setTimeout(cycle, 2500 + Math.random() * 2500);
-    };
-    t = setTimeout(cycle, 800 + Math.random() * 1500);
-    return () => clearTimeout(t);
-  }, []);
-  return (
-    <div
-      className="w-2.5 h-2.5 rounded-full border border-black/40 relative flex-shrink-0 inline-block"
-      style={{ backgroundColor: color }}
-      title="Worker"
-    >
-      <div className="absolute inset-0 flex justify-center items-center gap-px" style={{ paddingTop: '20%' }}>
-        <div className="rounded-full bg-black/80" style={{ width: '22%', height: blink ? '4%' : '22%', transition: 'height 0.06s' }} />
-        <div className="rounded-full bg-black/80" style={{ width: '22%', height: blink ? '4%' : '22%', transition: 'height 0.06s' }} />
-      </div>
-    </div>
-  );
-};
 
 interface MonopolyBoardLayoutProps {
   properties: Property[];
@@ -224,7 +199,6 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
     }
 
     const isChanceOrCC = property.name === 'Chance' || property.name === 'Community Chest';
-    const workerForProp = workers.find(w => w.propertyId === property.id);
 
     return (
       <Card
@@ -250,11 +224,8 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
         )}
 
         <div className={`flex flex-col justify-between h-full w-full z-10 relative ${isDiscovered ? padClass : 'p-0.5'}`}>
-          {/* Property name — line-clamp with break-all so long city names wrap cleanly */}
-          <div className="flex items-center justify-center w-full overflow-hidden flex-1 min-h-0 gap-px">
-            {workerForProp && isDiscovered && (
-              <WorkerFace color={workerForProp.color} />
-            )}
+          {/* Property name */}
+          <div className="flex items-center justify-center w-full overflow-hidden flex-1 min-h-0">
             <p className="text-[0.34rem] sm:text-[0.48rem] font-bold text-slate-200 leading-[1.15] text-center uppercase break-all w-full line-clamp-3 overflow-hidden">
               {isDiscovered ? property.name : '???'}
             </p>
