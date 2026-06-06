@@ -269,6 +269,9 @@ const MonopolyGame: React.FC = () => {
     prevActivePlayers.current = currentActiveIds;
   }, [gameState.players]);
 
+  // Reset cardResolved whenever the turn changes or pendingCard is cleared by Firestore
+  useEffect(() => { setCardResolved(false); }, [gameState.currentPlayer, gameState.pendingCard]);
+
   if (!currentPlayer || !myPlayer) {
     console.log("Waiting for players...");
     return (
@@ -369,8 +372,6 @@ const MonopolyGame: React.FC = () => {
   // Pending card dialog — also suppressed locally once resolved (Firestore update is async)
   const myPendingCard = gameState.pendingCard && gameState.currentPlayer === localPlayerId && !cardResolved
     ? gameState.pendingCard : null;
-  // Reset cardResolved when the current player or pendingCard changes
-  React.useEffect(() => { setCardResolved(false); }, [gameState.currentPlayer, gameState.pendingCard]);
 
   // Offer panel: only shown on MY turn, after rolling (not while waiting to roll), and when I'm standing
   // on a property owned by someone else. Reset dismissed state when my position changes.
