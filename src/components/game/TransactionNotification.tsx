@@ -1,7 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { X, DollarSign, Home, TrendingUp, TrendingDown } from 'lucide-react';
 import { GameEvent } from '@/types/game';
 
@@ -14,91 +12,95 @@ const TransactionNotification: React.FC<TransactionNotificationProps> = ({
   events,
   onDismiss
 }) => {
-  const [visibleEvents, setVisibleEvents] = useState<GameEvent[]>([]);
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const timerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
+  // Auto-expire events after 10 seconds
   useEffect(() => {
-    // Show only recent transaction events
-    const recentEvents = events
-      .filter(event => 
-        ['purchase', 'rent', 'trade', 'build', 'mortgage'].includes(event.type) &&
-        Date.now() - event.timestamp < 10000 // Show for 10 seconds
-      )
-      .slice(-3); // Show last 3 events
-    
-    setVisibleEvents(recentEvents);
+    const now = Date.now();
+    events.forEach(event => {
+      if (timerRef.current.has(event.id)) return;
+      const remaining = 10000 - (now - event.timestamp);
+      if (remaining <= 0) {
+        setDismissedIds(prev => new Set([...prev, event.id]));
+        return;
+      }
+      const t = setTimeout(() => {
+        setDismissedIds(prev => new Set([...prev, event.id]));
+        timerRef.current.delete(event.id);
+      }, remaining);
+      timerRef.current.set(event.id, t);
+    });
+
+    return () => {
+      timerRef.current.forEach(t => clearTimeout(t));
+    };
   }, [events]);
+
+  const handleDismiss = (eventId: string) => {
+    setDismissedIds(prev => new Set([...prev, eventId]));
+    const t = timerRef.current.get(eventId);
+    if (t) { clearTimeout(t); timerRef.current.delete(eventId); }
+    onDismiss(eventId);
+  };
+
+  const visibleEvents = events
+    .filter(event =>
+      ['purchase', 'rent', 'trade', 'build', 'mortgage'].includes(event.type) &&
+      !dismissedIds.has(event.id)
+    )
+    .slice(-3);
 
   const getEventIcon = (type: string) => {
     switch (type) {
-      case 'purchase':
-        return <Home className="w-4 h-4 text-green-500" />;
-      case 'rent':
-        return <DollarSign className="w-4 h-4 text-red-500" />;
-      case 'trade':
-        return <TrendingUp className="w-4 h-4 text-blue-500" />;
-      case 'build':
-        return <Home className="w-4 h-4 text-purple-500" />;
-      case 'mortgage':
-        return <TrendingDown className="w-4 h-4 text-orange-500" />;
-      default:
-        return <DollarSign className="w-4 h-4 text-gray-500" />;
+      case 'purchase': return <Home className="w-4 h-4 text-green-400 flex-shrink-0" />;
+      case 'rent': return <DollarSign className="w-4 h-4 text-red-400 flex-shrink-0" />;
+      case 'trade': return <TrendingUp className="w-4 h-4 text-blue-400 flex-shrink-0" />;
+      case 'build': return <Home className="w-4 h-4 text-purple-400 flex-shrink-0" />;
+      case 'mortgage': return <TrendingDown className="w-4 h-4 text-orange-400 flex-shrink-0" />;
+      default: return <DollarSign className="w-4 h-4 text-gray-400 flex-shrink-0" />;
     }
   };
 
-  const getEventColor = (type: string) => {
+  const getEventBg = (type: string) => {
     switch (type) {
-      case 'purchase':
-        return 'bg-green-100 border-green-300 text-green-800';
-      case 'rent':
-        return 'bg-red-100 border-red-300 text-red-800';
-      case 'trade':
-        return 'bg-blue-100 border-blue-300 text-blue-800';
-      case 'build':
-        return 'bg-purple-100 border-purple-300 text-purple-800';
-      case 'mortgage':
-        return 'bg-orange-100 border-orange-300 text-orange-800';
-      default:
-        return 'bg-gray-100 border-gray-300 text-gray-800';
+      case 'purchase': return 'bg-green-950 border-green-700/60 text-green-100';
+      case 'rent': return 'bg-red-950 border-red-700/60 text-red-100';
+      case 'trade': return 'bg-blue-950 border-blue-700/60 text-blue-100';
+      case 'build': return 'bg-purple-950 border-purple-700/60 text-purple-100';
+      case 'mortgage': return 'bg-orange-950 border-orange-700/60 text-orange-100';
+      default: return 'bg-slate-800 border-slate-600 text-slate-100';
     }
   };
 
   if (visibleEvents.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2 max-w-sm">
+    <div className="fixed top-16 right-3 z-[60] space-y-2 max-w-xs pointer-events-auto">
       {visibleEvents.map((event) => (
         <Card
           key={event.id}
-          className={`${getEventColor(event.type)} border-2 shadow-lg animate-in slide-in-from-right duration-300`}
+          className={`${getEventBg(event.type)} border shadow-xl animate-in slide-in-from-right duration-300`}
         >
-          <CardContent className="p-3">
-            <div className="flex items-start justify-between">
-              <div className="flex items-start gap-2 flex-1">
-                {getEventIcon(event.type)}
-                <div className="flex-1">
-                  <div className="text-sm font-semibold">
-                    {event.player}
+          <CardContent className="p-2.5">
+            <div className="flex items-start gap-2">
+              {getEventIcon(event.type)}
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-bold truncate">{event.player}</div>
+                <div className="text-[0.7rem] opacity-80 leading-tight">{event.message}</div>
+                {event.amount !== undefined && (
+                  <div className={`text-xs font-bold mt-0.5 ${event.amount >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {event.amount >= 0 ? '+' : ''}${Math.abs(event.amount).toLocaleString('en-US')}
                   </div>
-                  <div className="text-xs">
-                    {event.message}
-                  </div>
-                  {event.amount && (
-                    <div className={`text-xs font-bold mt-1 ${
-                      event.amount > 0 ? 'text-green-700' : 'text-red-700'
-                    }`}>
-                      {event.amount > 0 ? '+' : ''}${Math.abs(event.amount).toLocaleString('en-US')}
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onDismiss(event.id)}
-                className="h-6 w-6 p-0 hover:bg-black/10"
+              <button
+                onClick={() => handleDismiss(event.id)}
+                className="flex-shrink-0 w-5 h-5 rounded hover:bg-white/20 flex items-center justify-center transition-colors"
+                aria-label="Dismiss"
               >
                 <X className="w-3 h-3" />
-              </Button>
+              </button>
             </div>
           </CardContent>
         </Card>
@@ -108,4 +110,3 @@ const TransactionNotification: React.FC<TransactionNotificationProps> = ({
 };
 
 export default TransactionNotification;
-

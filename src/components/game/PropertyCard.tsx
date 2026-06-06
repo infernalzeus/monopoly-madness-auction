@@ -65,12 +65,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
     return property.rent[rentIndex] || property.rent[0];
   };
 
-  const formatCurrency = (amount: number) => {
-    if (amount >= 100000) {
-      return `$${(amount / 100000).toFixed(1)}L`;
-    }
-    return `$${(amount / 1000).toFixed(0)}K`;
-  };
+  const formatCurrency = (amount: number) => `$${amount.toLocaleString('en-US')}`;
 
   return (
     <Card className="bg-gradient-card border-border max-w-sm">
