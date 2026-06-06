@@ -47,7 +47,7 @@ const WorkerFaceInPanel: React.FC<{ color: string }> = ({ color }) => {
       title="Worker assigned"
     >
       {/* Eyes */}
-      <div className="absolute inset-0 flex justify-center items-center gap-[3px]" style={{ paddingTop: '20%' }}>
+      <div className="absolute inset-0 flex justify-center items-center gap-[3px]" style={{ paddingTop: '18%' }}>
         <div
           className="rounded-full bg-black/80"
           style={{ width: 4, height: blink ? 1 : 4, transition: 'height 0.07s' }}
@@ -56,6 +56,17 @@ const WorkerFaceInPanel: React.FC<{ color: string }> = ({ color }) => {
           className="rounded-full bg-black/80"
           style={{ width: 4, height: blink ? 1 : 4, transition: 'height 0.07s' }}
         />
+      </div>
+      {/* Smile */}
+      <div className="absolute inset-0 flex justify-center items-end" style={{ paddingBottom: '16%' }}>
+        <div style={{
+          width: 8,
+          height: 4,
+          borderBottom: '1.5px solid white',
+          borderLeft: '1.5px solid white',
+          borderRight: '1.5px solid white',
+          borderRadius: '0 0 6px 6px',
+        }} />
       </div>
     </div>
   );

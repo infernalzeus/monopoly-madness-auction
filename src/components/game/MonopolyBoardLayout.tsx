@@ -226,7 +226,7 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
         <div className={`flex flex-col justify-between h-full w-full z-10 relative ${isDiscovered ? padClass : 'p-0.5'}`}>
           {/* Property name */}
           <div className="flex items-center justify-center w-full overflow-hidden flex-1 min-h-0">
-            <p className="text-[0.34rem] sm:text-[0.48rem] font-bold text-slate-200 leading-[1.15] text-center uppercase break-all w-full line-clamp-3 overflow-hidden">
+            <p className="text-[0.34rem] sm:text-[0.48rem] font-bold text-slate-200 leading-[1.15] text-center uppercase break-words w-full line-clamp-3 overflow-hidden">
               {isDiscovered ? property.name : '???'}
             </p>
           </div>

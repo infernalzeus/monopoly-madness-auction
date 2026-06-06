@@ -22,6 +22,8 @@ interface AuctionPanelProps {
   onSkipPurchase: () => void;
   onStartAuction: (propertyId: string, startingBid?: number) => void;
   onMakeOffer: (amount: number) => void;
+  onPassOffer?: () => void;
+  onEndAuction?: () => void;
   players: string[];
   currentPlayer: string;
   auctionsEnabled: boolean;
@@ -36,6 +38,8 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
   onSkipPurchase,
   onStartAuction,
   onMakeOffer,
+  onPassOffer,
+  onEndAuction,
   players,
   currentPlayer,
   auctionsEnabled
@@ -169,47 +173,59 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
           )}
 
           {ownedPropertyOnTile && (
-            <div className="space-y-3 pt-2 border-t">
-              {ownedPropertyOnTile.owner === currentPlayer ? (
-                <div className="bg-slate-900/60 p-4 rounded-lg border border-purple-500/20 text-center">
-                  <p className="text-sm text-purple-300 font-semibold">🔒 You own this property</p>
-                  <p className="text-xs text-slate-400 mt-1">Waiting for the active player to pay rent...</p>
+            <div className="space-y-3 pt-2 border-t border-slate-700">
+              <h3 className="font-semibold text-foreground text-sm">Make a Purchase Offer</h3>
+              <div className="bg-background/50 rounded-lg p-3 text-sm space-y-1.5 border border-slate-700/50">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Property</span>
+                  <span className="font-semibold text-slate-100">{ownedPropertyOnTile.name}</span>
                 </div>
-              ) : (
-                <>
-                  <h3 className="font-semibold text-foreground">Make an Offer</h3>
-                  <div className="bg-background/50 rounded p-3 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Property</span>
-                      <span className="font-medium">{ownedPropertyOnTile.name}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Owner</span>
-                      <span className="font-medium">{ownedPropertyOnTile.owner}</span>
-                    </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Owner</span>
+                  <span className="font-semibold text-slate-100">{ownedPropertyOnTile.owner}</span>
+                </div>
+                {(ownedPropertyOnTile.houses > 0 || ownedPropertyOnTile.hasHotel) && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Buildings</span>
+                    <span className="font-semibold text-slate-100">
+                      {ownedPropertyOnTile.hasHotel ? '🏨 Hotel' : `🏠 ${ownedPropertyOnTile.houses} House${ownedPropertyOnTile.houses !== 1 ? 's' : ''}`}
+                    </span>
                   </div>
-                  <div className="flex gap-2">
-                    <Input
-                      type="number"
-                      placeholder="Offer amount"
-                      value={offerAmount}
-                      onChange={(e) => setOfferAmount(e.target.value)}
-                    />
-                    <Button
-                      onClick={() => {
-                        const amt = parseInt(offerAmount);
-                        if (!isNaN(amt) && amt > 0) {
-                          onMakeOffer(amt);
-                          setOfferAmount('');
-                        }
-                      }}
-                      disabled={!offerAmount || parseInt(offerAmount) <= 0}
-                    >
-                      Send Offer
-                    </Button>
-                  </div>
-                </>
-              )}
+                )}
+              </div>
+              <p className="text-[0.7rem] text-slate-400 leading-snug">
+                Offer to buy this property (with all buildings) — the owner can accept or decline via the Trading panel.
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  placeholder="Offer amount"
+                  value={offerAmount}
+                  onChange={(e) => setOfferAmount(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={() => {
+                    const amt = parseInt(offerAmount);
+                    if (!isNaN(amt) && amt > 0) {
+                      onMakeOffer(amt);
+                      setOfferAmount('');
+                      if (onPassOffer) onPassOffer();
+                    }
+                  }}
+                  disabled={!offerAmount || parseInt(offerAmount) <= 0}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+                >
+                  Send Offer
+                </Button>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => { if (onPassOffer) onPassOffer(); }}
+                className="w-full border-slate-600 text-slate-400 hover:bg-slate-800 text-sm"
+              >
+                Pass
+              </Button>
             </div>
           )}
         </CardContent>
@@ -290,10 +306,22 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
           )}
         </div>
 
-        {/* Can't bid on own auction */}
+        {/* Can't bid on own auction — seller controls */}
         {startedBy === currentPlayer ? (
-          <div className="text-center py-2 px-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
-            <p className="text-xs text-yellow-400">You initiated this auction — waiting for bids</p>
+          <div className="space-y-2">
+            <div className="text-center py-2 px-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
+              <p className="text-xs text-yellow-400">You initiated this auction — waiting for bids</p>
+            </div>
+            {onEndAuction && (
+              <Button
+                onClick={onEndAuction}
+                className={`w-full text-sm font-bold text-white ${highestBidder ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-600 hover:bg-slate-700'}`}
+              >
+                {highestBidder
+                  ? `✅ Collect ₹${currentBid.toLocaleString()} from ${highestBidder}`
+                  : '⏭️ End Auction (no bids — turn passes)'}
+              </Button>
+            )}
           </div>
         ) : (
           <div className="space-y-3">

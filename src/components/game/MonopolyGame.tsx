@@ -54,6 +54,7 @@ const MonopolyGame: React.FC = () => {
   const [workerPickPropertyId, setWorkerPickPropertyId] = useState<string | null>(null);
   const [showRules, setShowRules] = useState(false);
   const [selectedSpecialProperty, setSelectedSpecialProperty] = useState<Property | null>(null);
+  const [offerDismissed, setOfferDismissed] = useState(false);
   
   const {
     gameState,
@@ -63,6 +64,7 @@ const MonopolyGame: React.FC = () => {
     randomizeProperties,
     startAuction,
     placeBid,
+    endAuction,
     purchaseProperty,
     skipPurchase,
     makeOffer,
@@ -298,9 +300,23 @@ const MonopolyGame: React.FC = () => {
   // Pending card dialog
   const myPendingCard = gameState.pendingCard && gameState.currentPlayer === localPlayerId ? gameState.pendingCard : null;
 
-  // Determine if current tile has an owned property (not by current player) to enable offers
-  const propertyOnTile = gameState.properties.find(p => p.position === currentPlayer.position);
-  const ownedPropertyOnTile = gameState.settings.auctionsEnabled && propertyOnTile && propertyOnTile.isOwned && propertyOnTile.owner !== currentPlayer.name ? propertyOnTile : null;
+  // Offer panel: only shown on MY turn, after rolling (not while waiting to roll), and when I'm standing
+  // on a property owned by someone else. Reset dismissed state when my position changes.
+  const propertyOnMyTile = gameState.properties.find(p => p.position === myPlayer.position);
+  const ownedPropertyOnTile = (
+    isMyTurn &&
+    gameState.turnState !== 'waiting_for_roll' &&
+    !offerDismissed &&
+    gameState.settings.auctionsEnabled &&
+    propertyOnMyTile &&
+    propertyOnMyTile.isOwned &&
+    propertyOnMyTile.owner !== myPlayer.name
+  ) ? propertyOnMyTile : null;
+
+  // Reset offer dismissed state when local player moves to a new position
+  useEffect(() => {
+    setOfferDismissed(false);
+  }, [myPlayer.position, gameState.currentPlayer]);
 
   const handlePropertyClick = (property: Property) => {
     if (property.type === 'special') {
@@ -771,10 +787,23 @@ const MonopolyGame: React.FC = () => {
                       onSkipPurchase={() => skipPurchase()}
                       onStartAuction={(pid, startingBid) => startAuction(pid, myPlayer.name, startingBid)}
                       onMakeOffer={(amount) => {
-                        if (ownedPropertyOnTile) {
-                          makeOffer(ownedPropertyOnTile.id, ownedPropertyOnTile.owner as string, amount);
+                        if (ownedPropertyOnTile && ownedPropertyOnTile.owner) {
+                          createTradeOffer(
+                            ownedPropertyOnTile.owner,
+                            [],
+                            [ownedPropertyOnTile.id],
+                            amount,
+                            0
+                          );
                         }
                       }}
+                      onPassOffer={() => {
+                        setOfferDismissed(true);
+                        if (gameState.turnState === 'waiting_for_action' && !gameState.pendingRent && !gameState.pendingPurchase) {
+                          endTurn();
+                        }
+                      }}
+                      onEndAuction={endAuction}
                       players={gameState.players.map(p => p.name)}
                       currentPlayer={myPlayer.name}
                       auctionsEnabled={gameState.settings.auctionsEnabled}
@@ -968,11 +997,11 @@ const MonopolyGame: React.FC = () => {
             </DialogHeader>
             <div className="space-y-4 py-2">
               <p className="text-slate-400 text-sm">
-                Assign workers to your properties. Each time you pass GO, assigned workers automatically build one house (or upgrade to hotel at 4 houses).
+                Workers live on your properties and build automatically — one house each time you pass GO. At 4 houses they upgrade to a hotel. Pick their look before assigning.
               </p>
               {/* Worker color picker */}
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-amber-300">Worker Color</label>
+                <label className="text-sm font-semibold text-amber-300">Worker Appearance</label>
                 <div className="flex gap-2 flex-wrap items-center">
                   {['#000000', '#3A3A3A', '#7A6A5A', '#B8A090', '#FFE5B4', '#FFF0D8', '#FFFFFF'].map(c => (
                     <button
@@ -991,7 +1020,6 @@ const MonopolyGame: React.FC = () => {
                     title="Custom color"
                   />
                 </div>
-                <div className="w-full h-2 rounded-full" style={{ background: 'linear-gradient(to right, #000000, #7A6A5A, #FFE5B4, #FFFFFF)' }} />
               </div>
 
               {/* Property list for assignment */}

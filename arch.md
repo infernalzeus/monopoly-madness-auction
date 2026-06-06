@@ -1,6 +1,6 @@
 # 🎲 Monopoly Madness Auction - Application Architecture & Developer Manual
 
-> **Current Version: `v1.0.9.7`**  
+> **Current Version: `v1.0.9.8`**  
 > Version is displayed on the lobby start screen (`LobbySystem.tsx` header) and used as the prefix for all git commit summaries.  
 > Format: `v<major>.<minor>.<patch>.<build>` — increment build on each fix, patch on each feature set, minor on design overhauls.
 
@@ -557,6 +557,24 @@ In `movePlayer()` (`core.ts`), when `passedGo && settings.workersEnabled`:
 - **👷 Workers** button in the game header (shown when `workersEnabled`).
 - **Worker Assignment Panel** (Dialog): lists owned properties, color picker (black → `#FFE5B4` → white gradient + custom input), Assign / Recolor / Remove buttons.
 - **WorkerFace** component (`MonopolyBoardLayout.tsx`): a tiny rounded face with blinking eyes rendered beside the property name. Uses `useEffect` for random blink timing. No other facial features.
+
+---
+
+## 🏠 Property Purchase Offers (v1.0.9.8)
+
+When a player lands on a property owned by another player, a **Purchase Offer** panel appears in the board center (alongside or after the rent dialog).
+
+### Flow
+- Panel triggers only when: it is the local player's turn **and** they have rolled (turnState ≠ `waiting_for_roll`) **and** the tile they are on is owned by someone else.
+- The offer is sent as a `TradeOffer` via `createTradeOffer` (requestedProperties=[propertyId], offeredCash=amount, offeredProperties=[], requestedCash=0).
+- The owner accepts or declines via the **Trading** panel (badge shown when pending offers exist).
+- **Pass** button: dismisses the panel for the current landing. If turnState is `waiting_for_action` with no other pending items, also advances the turn.
+- Panel auto-resets when the player moves to a new position.
+
+### Auction Seller End-Early (v1.0.9.8)
+- The player who initiated a turn auction now sees a **Collect / End Auction** button below the "waiting for bids" notice.
+- If bids exist: button reads *Collect ₹{amount} from {bidder}* — clicks `endAuction()` immediately, awarding the property.
+- If no bids: button reads *End Auction (no bids — turn passes)* — `endAuction()` still runs, property stays unowned and turn advances.
 
 ---
 
