@@ -5,8 +5,8 @@ import type {
   ToastProps,
 } from "@/components/ui/toast"
 
-const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+const TOAST_LIMIT = 3
+const TOAST_REMOVE_DELAY = 800 // ms after dismiss animation before removing from state
 
 type ToasterToast = ToastProps & {
   id: string
@@ -139,8 +139,11 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">
 
+const DEFAULT_DURATION = 5000 // 5 seconds auto-dismiss
+
 function toast({ ...props }: Toast) {
   const id = genId()
+  const duration = (props as any).duration ?? DEFAULT_DURATION
 
   const update = (props: ToasterToast) =>
     dispatch({
@@ -160,6 +163,11 @@ function toast({ ...props }: Toast) {
       },
     },
   })
+
+  // Auto-dismiss after duration
+  if (duration && duration !== Infinity) {
+    setTimeout(() => dismiss(), duration)
+  }
 
   return {
     id: id,

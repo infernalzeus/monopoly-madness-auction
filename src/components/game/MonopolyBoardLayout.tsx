@@ -153,10 +153,47 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
     const isCorner = position % 10 === 0;
 
     if (isCorner) {
-      // Corner render
+      // Jail corner — special two-zone layout
+      if (position === 10) {
+        const jailedHere = playersHere.filter(p => p.isInJail);
+        const visitingHere = playersHere.filter(p => !p.isInJail);
+        return (
+          <div
+            key={position}
+            className="bg-slate-900 text-slate-200 border border-slate-800 rounded-sm relative overflow-hidden cursor-pointer hover:bg-slate-800 transition-colors"
+            style={{ gridRow: row, gridColumn: col }}
+            onClick={() => onPropertyClick(property)}
+          >
+            {/* Jail zone — top 65% */}
+            <div className="absolute top-0 left-0 right-0 flex flex-col items-center justify-center" style={{ height: '65%' }}>
+              <Building className="w-3 h-3 sm:w-5 sm:h-5 text-slate-400 flex-shrink-0" />
+              <span className="text-[0.32rem] sm:text-[0.45rem] font-bold text-slate-300 uppercase mt-0.5">Jail</span>
+              {jailedHere.length > 0 && (
+                <div className="flex flex-wrap justify-center gap-0.5 mt-0.5">
+                  {jailedHere.map((player, idx) => (
+                    <AnimatedToken key={player.id} player={player} isMoving={isMoving[player.id]} delay={idx * 100} />
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* Just Visiting strip — bottom 35%, light gray shading */}
+            <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center justify-center border-t border-slate-600/60" style={{ height: '35%', backgroundColor: 'rgba(148,163,184,0.15)' }}>
+              <span className="text-[0.28rem] sm:text-[0.38rem] text-slate-400 uppercase font-semibold leading-tight">Just Visiting</span>
+              {visitingHere.length > 0 && (
+                <div className="flex flex-wrap justify-center gap-0.5 mt-0.5">
+                  {visitingHere.map((player, idx) => (
+                    <AnimatedToken key={player.id} player={player} isMoving={isMoving[player.id]} delay={idx * 100} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      // Other corners — standard render
       let icon = null;
       if (position === 0) icon = <span className="text-lg sm:text-2xl font-black text-emerald-500">GO</span>;
-      if (position === 10) icon = <Building className="w-4 h-4 sm:w-6 sm:h-6 text-slate-500" />;
       if (position === 20) icon = <Landmark className="w-4 h-4 sm:w-6 sm:h-6 text-sky-500" />;
       if (position === 30) icon = <Home className="w-4 h-4 sm:w-6 sm:h-6 text-rose-500" />;
 

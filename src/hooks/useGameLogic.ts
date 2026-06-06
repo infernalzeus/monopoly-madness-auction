@@ -669,7 +669,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
           if (p.name === prevOwner) return { ...p, balance: p.balance + price, properties: p.properties.filter(pid => pid !== propertyId) };
           return p;
         });
-        const ev = { id: `ev-${Date.now()}`, type: 'purchase' as const, player: buyer.name, message: `bought mortgaged ${property.name} for $${price.toLocaleString()}`, timestamp: Date.now(), amount: -price };
+        const ev = { id: `ev-${Date.now()}`, type: 'purchase' as const, player: buyer.name, message: `bought mortgaged ${property.name} for $${price.toLocaleString('en-US')}`, timestamp: Date.now(), amount: -price };
         return advanceTurnLogic({ ...prev, properties: newProperties, players: newPlayers, pendingPurchase: null, gameEvents: [...prev.gameEvents.slice(-19), ev] });
       }
 
@@ -707,7 +707,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
     addGameEvent(
       'trade',
       currentPlayer.name,
-      `offered $${amount.toLocaleString()} to ${toPlayerName} for ${property.name}`,
+      `offered $${amount.toLocaleString('en-US')} to ${toPlayerName} for ${property.name}`,
       amount
     );
   }, [gameState.players, gameState.currentPlayer, gameState.properties, addGameEvent]);
@@ -774,7 +774,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
       properties: prev.properties.map(p => p.id === propertyId ? { ...p, houses: p.houses + 1 } : p),
       players: prev.players.map(pl => pl.id === currentPlayer.id ? { ...pl, balance: pl.balance - cost } : pl)
     }));
-    addGameEvent('build', currentPlayer.name, `built a house on ${property.name} for $${cost.toLocaleString()}`, -cost);
+    addGameEvent('build', currentPlayer.name, `built a house on ${property.name} for $${cost.toLocaleString('en-US')}`, -cost);
   }, [gameState.properties, gameState.players, gameState.currentPlayer, canBuildHouse, addGameEvent]);
 
   const sellHouse = useCallback((propertyId: string) => {
@@ -789,7 +789,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
       properties: prev.properties.map(p => p.id === propertyId ? { ...p, houses: p.houses - 1 } : p),
       players: prev.players.map(pl => pl.id === currentPlayer.id ? { ...pl, balance: pl.balance + refund } : pl)
     }));
-    addGameEvent('build', currentPlayer.name, `sold a house on ${property.name} for $${refund.toLocaleString()}`, refund);
+    addGameEvent('build', currentPlayer.name, `sold a house on ${property.name} for $${refund.toLocaleString('en-US')}`, refund);
   }, [gameState.properties, gameState.players, gameState.currentPlayer, addGameEvent]);
 
   const buildHotel = useCallback((propertyId: string) => {
@@ -804,7 +804,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
       properties: prev.properties.map(p => p.id === propertyId ? { ...p, hasHotel: true, houses: 0 } : p),
       players: prev.players.map(pl => pl.id === currentPlayer.id ? { ...pl, balance: pl.balance - cost } : pl)
     }));
-    addGameEvent('build', currentPlayer.name, `built a hotel on ${property.name} for $${cost.toLocaleString()}`, -cost);
+    addGameEvent('build', currentPlayer.name, `built a hotel on ${property.name} for $${cost.toLocaleString('en-US')}`, -cost);
   }, [gameState.properties, gameState.players, gameState.currentPlayer, addGameEvent]);
 
   const sellHotel = useCallback((propertyId: string) => {
@@ -818,7 +818,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
       properties: prev.properties.map(p => p.id === propertyId ? { ...p, hasHotel: false, houses: 4 } : p),
       players: prev.players.map(pl => pl.id === currentPlayer.id ? { ...pl, balance: pl.balance + refund } : pl)
     }));
-    addGameEvent('build', currentPlayer.name, `sold a hotel on ${property.name} for $${refund.toLocaleString()}`, refund);
+    addGameEvent('build', currentPlayer.name, `sold a hotel on ${property.name} for $${refund.toLocaleString('en-US')}`, refund);
   }, [gameState.properties, gameState.players, gameState.currentPlayer, addGameEvent]);
 
   function movePlayerToJail(state: GameState, playerId: string): GameState {
@@ -1214,7 +1214,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
         id: `event-${Date.now()}`,
         type: 'rent',
         player: payerName,
-        message: `paid $${rentAmount.toLocaleString()} rent to ${rentOwner}${property ? ` for ${property.name}` : ''}`,
+        message: `paid $${rentAmount.toLocaleString('en-US')} rent to ${rentOwner}${property ? ` for ${property.name}` : ''}`,
         timestamp: Date.now(),
         amount: -rentAmount
       };
@@ -1253,7 +1253,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
           : p
       )
     }));
-    addGameEvent('jail', cp.name, `paid $${fine.toLocaleString()} jail fine (20% of $${income.toLocaleString()} property income)`, -fine);
+    addGameEvent('jail', cp.name, `paid $${fine.toLocaleString('en-US')} jail fine (20% of $${income.toLocaleString('en-US')} property income)`, -fine);
   }, [gameState.players, gameState.currentPlayer, gameState.properties, addGameEvent, setGameState]);
 
   const skipJailTurn = useCallback(() => {
@@ -1296,7 +1296,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
         type: 'card',
         player: cp.name,
         message: pc.amount > 0
-          ? `${cardLabel} (${rollLabel}): ${pc.isReward ? '+' : '-'}$${pc.amount.toLocaleString()} from ${pc.numProperties} prop${pc.numProperties !== 1 ? 's' : ''}`
+          ? `${cardLabel} (${rollLabel}): ${pc.isReward ? '+' : '-'}$${pc.amount.toLocaleString('en-US')} from ${pc.numProperties} prop${pc.numProperties !== 1 ? 's' : ''}`
           : `${cardLabel} (${rollLabel}): No properties — no change`,
         timestamp: Date.now(),
         amount: pc.amount > 0 ? (pc.isReward ? pc.amount : -pc.amount) : undefined

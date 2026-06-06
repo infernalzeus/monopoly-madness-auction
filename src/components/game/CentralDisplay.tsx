@@ -115,7 +115,7 @@ const CentralDisplay: React.FC<CentralDisplayProps> = ({
   const formatAmount = (amount?: number) => {
     if (amount === undefined) return '';
     const sign = amount >= 0 ? '+' : '';
-    const formatted = Math.abs(amount).toLocaleString();
+    const formatted = Math.abs(amount).toLocaleString('en-US');
     return `${sign}$${formatted}`;
   };
 

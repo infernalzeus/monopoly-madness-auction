@@ -147,7 +147,7 @@ export const movePlayer = (state: GameState, spaces: number): GameState => {
 
   if (passedGo && passGoBonus > 0) {
     nextState = addEvent(nextState, 'passGo', movingPlayer.name,
-      `passed GO! Earned 10% income: +$${passGoBonus.toLocaleString()}`, passGoBonus);
+      `passed GO! Earned 10% income: +$${passGoBonus.toLocaleString('en-US')}`, passGoBonus);
   }
 
   // Check rent — jailed owners and inactive properties cannot collect rent
@@ -214,7 +214,7 @@ export const movePlayer = (state: GameState, spaces: number): GameState => {
     const taxAmount = Math.round((totalFinance * 0.1) / 100) * 100; // 10% rounded to nearest 100
 
     nextState = applyPayment(nextState, state.currentPlayer, null, taxAmount, 'Tax Payment');
-    nextState = addEvent(nextState, 'tax', movingPlayer.name, `paid $${taxAmount.toLocaleString()} in ${landedProperty.name}`, -taxAmount);
+    nextState = addEvent(nextState, 'tax', movingPlayer.name, `paid $${taxAmount.toLocaleString('en-US')} in ${landedProperty.name}`, -taxAmount);
     nextState = { ...nextState, turnState: 'completed' };
   }
 

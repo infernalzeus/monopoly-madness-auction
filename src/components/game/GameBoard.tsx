@@ -62,7 +62,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 <div className="flex justify-between text-xs">
                   <span className="text-slate-500">Value:</span>
                   <span className="text-sky-700 font-semibold">
-                    ${property.currentValue.toLocaleString()}
+                    ${property.currentValue.toLocaleString('en-US')}
                   </span>
                 </div>
                 
@@ -70,7 +70,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
                   <div className="flex justify-between text-xs">
                     <span className="text-slate-500">Rent:</span>
                     <span className="text-slate-700">
-                      ${property.rent.toLocaleString()}
+                      ${property.rent.toLocaleString('en-US')}
                     </span>
                   </div>
                 )}

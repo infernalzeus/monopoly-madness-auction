@@ -153,7 +153,7 @@ const GameConsole: React.FC<GameConsoleProps> = ({
                         >
                           <div className="font-bold text-cyan-200 text-sm">{property.name}</div>
                           <div className="text-xs text-cyan-400">
-                            💰 Value: ${property.currentValue.toLocaleString()}
+                            💰 Value: ${property.currentValue.toLocaleString('en-US')}
                           </div>
                           <div className="text-xs text-slate-300">
                             🏷️ Type: {property.type}
@@ -522,7 +522,7 @@ const GameConsole: React.FC<GameConsoleProps> = ({
                               <div>
                                 <div className="font-medium text-sm">{property.name}</div>
                                 <div className="text-xs text-gray-500">
-                                  Value: ${property.currentValue.toLocaleString()}
+                                  Value: ${property.currentValue.toLocaleString('en-US')}
                                 </div>
                               </div>
                               <Badge variant={preAuctionProperties.includes(property.id) ? "default" : "secondary"}>

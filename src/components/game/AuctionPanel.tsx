@@ -72,7 +72,7 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
                   <div className="text-center font-bold text-amber-300 text-lg">{pendingPurchase.property.name}</div>
                   <div className="text-center text-xs text-amber-600">Owner: {pendingPurchase.property.owner}</div>
                   <div className="text-center text-3xl font-bold text-amber-400 py-1">
-                    ${(pendingPurchase.property.mortgageValue || Math.round(pendingPurchase.property.currentValue * 0.5)).toLocaleString()}
+                    ${(pendingPurchase.property.mortgageValue || Math.round(pendingPurchase.property.currentValue * 0.5)).toLocaleString('en-US')}
                   </div>
                   <div className="text-center text-xs text-amber-600">Mortgage price (owner collects this)</div>
                 </div>
@@ -99,7 +99,7 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
 
                 <div className="text-center mb-4">
                   <div className="text-3xl font-bold text-emerald-400">
-                    ${pendingPurchase.property.currentValue.toLocaleString()}
+                    ${pendingPurchase.property.currentValue.toLocaleString('en-US')}
                   </div>
                 </div>
 
@@ -123,7 +123,7 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
                         value={auctionStartingBid}
                         onChange={(e) => setAuctionStartingBid(e.target.value)}
                         className="bg-slate-800 border-sky-400/50 text-sky-100 mb-2"
-                        placeholder={`Min. 70% = $${Math.round(pendingPurchase.property.currentValue * 0.7).toLocaleString()}`}
+                        placeholder={`Min. 70% = $${Math.round(pendingPurchase.property.currentValue * 0.7).toLocaleString('en-US')}`}
                       />
                       <div className="flex gap-2">
                         {[0.7, 0.85, 1.0].map(pct => (
@@ -298,7 +298,7 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
           <div className="grid grid-cols-2 gap-2 text-sm">
             <div>
               <span className="text-muted-foreground">Base Value:</span>
-              <span className="ml-2 font-semibold">${property.baseValue.toLocaleString()}</span>
+              <span className="ml-2 font-semibold">${property.baseValue.toLocaleString('en-US')}</span>
             </div>
             <div>
               <span className="text-muted-foreground">Type:</span>
@@ -321,7 +321,7 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
         {/* Current bid info */}
         <div className="text-center">
           <div className="text-2xl font-bold text-primary mb-1">
-            ${currentBid.toLocaleString()}
+            ${currentBid.toLocaleString('en-US')}
           </div>
           {highestBidder ? (
             <p className="text-sm text-muted-foreground">
@@ -344,7 +344,7 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
                 className={`w-full text-sm font-bold text-white ${highestBidder ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-600 hover:bg-slate-700'}`}
               >
                 {highestBidder
-                  ? `✅ Collect $${currentBid.toLocaleString()} from ${highestBidder}`
+                  ? `✅ Collect $${currentBid.toLocaleString('en-US')} from ${highestBidder}`
                   : '⏭️ End Auction (no bids — turn passes)'}
               </Button>
             )}
@@ -354,7 +354,7 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
             <div className="flex gap-2">
               <Input
                 type="number"
-                placeholder={`Min: $${minBid.toLocaleString()}`}
+                placeholder={`Min: $${minBid.toLocaleString('en-US')}`}
                 value={bidAmount}
                 onChange={(e) => setBidAmount(e.target.value)}
                 className="flex-1"
@@ -399,7 +399,7 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
                 <span className={bid.player === currentPlayer ? 'text-primary font-semibold' : 'text-foreground'}>
                   {bid.player === currentPlayer ? 'You' : bid.player}
                 </span>
-                <span className="font-mono">${bid.amount.toLocaleString()}</span>
+                <span className="font-mono">${bid.amount.toLocaleString('en-US')}</span>
               </div>
             ))}
             {bids.length === 0 && (

@@ -219,10 +219,10 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
             Monopoly Madness
           </h1>
           <p className="text-xl text-cyan-200 mb-1 font-semibold">
-            Buy. Bid. Build. Dominate the global property market.
+            Roll dice. Snap up cities. Watch your rivals go broke. 🎲
           </p>
           <p className="text-sm text-cyan-400/70 mb-5">
-            Trade international landmarks, outbid rivals, and be the last millionaire standing.
+            Buy, bid at auction, build with workers, team up with friends — or take on Bot Noob solo. Last millionaire standing wins!
           </p>
           <p className="text-xs text-cyan-400/40 font-mono tracking-wider mb-6">v1.0.9.8</p>
           {/* Feature highlight pills */}
@@ -230,9 +230,11 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
             {[
               { icon: '🌍', text: 'Global Cities' },
               { icon: '🔨', text: 'Live Auctions' },
-              { icon: '🤝', text: 'Trading' },
-              { icon: '👷', text: 'Workers Mode' },
-              { icon: '🏦', text: 'Mortgage System' },
+              { icon: '🤝', text: 'Team Up' },
+              { icon: '🔄', text: 'Trading' },
+              { icon: '👷', text: 'Workers' },
+              { icon: '✏️', text: 'Property Editor' },
+              { icon: '🏦', text: 'Mortgages' },
               { icon: '🤖', text: 'vs Bot Noob' },
             ].map(f => (
               <span key={f.text} className="bg-white/10 border border-white/20 text-white/80 text-xs px-3 py-1 rounded-full flex items-center gap-1.5">

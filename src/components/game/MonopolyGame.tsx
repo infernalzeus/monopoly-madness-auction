@@ -140,7 +140,7 @@ const MonopolyGame: React.FC = () => {
     } else if (gameState.turnState === 'waiting_for_action') {
       if (gameState.pendingCard) {
         // Always resolve cards immediately for bot
-        timer = setTimeout(() => resolveCard(), 800);
+        timer = setTimeout(() => resolveCard(), 300);
       } else if (gameState.pendingPurchase) {
         timer = setTimeout(() => {
           const prop = gameState.properties.find(p => p.id === gameState.pendingPurchase!.propertyId);
@@ -712,8 +712,8 @@ const MonopolyGame: React.FC = () => {
                       </div>
                       {jailFine > 0 ? (
                         <div className="bg-rose-950/40 rounded-lg p-3 border border-rose-800/50 text-sm space-y-1">
-                          <p className="text-slate-300">Property income: <span className="text-white font-bold">${jailIncome.toLocaleString()}</span></p>
-                          <p className="text-slate-300">Bail fine (20%): <span className="text-rose-300 font-bold">${jailFine.toLocaleString()}</span></p>
+                          <p className="text-slate-300">Property income: <span className="text-white font-bold">${jailIncome.toLocaleString('en-US')}</span></p>
+                          <p className="text-slate-300">Bail fine (20%): <span className="text-rose-300 font-bold">${jailFine.toLocaleString('en-US')}</span></p>
                           <p className="text-xs text-slate-500">Pay now to roll and move freely this turn.</p>
                         </div>
                       ) : (
@@ -725,7 +725,7 @@ const MonopolyGame: React.FC = () => {
                             onClick={payJailFine}
                             className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition-colors"
                           >
-                            Pay ${jailFine.toLocaleString()} &amp; Roll
+                            Pay ${jailFine.toLocaleString('en-US')} &amp; Roll
                           </button>
                         )}
                         <button
@@ -749,9 +749,9 @@ const MonopolyGame: React.FC = () => {
                       </div>
                       {myPendingCard.amount > 0 ? (
                         <div className={`rounded-lg p-3 border text-sm space-y-1 ${myPendingCard.isReward ? 'bg-yellow-950/40 border-yellow-800/50' : 'bg-red-950/40 border-red-800/50'}`}>
-                          <p className="text-slate-300">Total property income: <span className="text-white font-bold">${myPendingCard.income.toLocaleString()}</span></p>
+                          <p className="text-slate-300">Total property income: <span className="text-white font-bold">${myPendingCard.income.toLocaleString('en-US')}</span></p>
                           <p className="text-slate-300">Properties owned: <span className="text-white font-bold">{myPendingCard.numProperties}</span></p>
-                          <p className="text-slate-300">10% of income: <span className={`font-bold ${myPendingCard.isReward ? 'text-yellow-300' : 'text-red-300'}`}>{myPendingCard.isReward ? '+' : '-'}${myPendingCard.amount.toLocaleString()}</span></p>
+                          <p className="text-slate-300">10% of income: <span className={`font-bold ${myPendingCard.isReward ? 'text-yellow-300' : 'text-red-300'}`}>{myPendingCard.isReward ? '+' : '-'}${myPendingCard.amount.toLocaleString('en-US')}</span></p>
                         </div>
                       ) : (
                         <p className="text-slate-400 text-sm">No properties — no reward or penalty this time.</p>
@@ -760,7 +760,7 @@ const MonopolyGame: React.FC = () => {
                         onClick={resolveCard}
                         className={`w-full font-bold py-2 px-4 rounded-lg text-sm transition-colors text-white ${myPendingCard.isReward ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-red-700 hover:bg-red-800'}`}
                       >
-                        {myPendingCard.amount > 0 ? (myPendingCard.isReward ? `Collect $${myPendingCard.amount.toLocaleString()}` : `Pay $${myPendingCard.amount.toLocaleString()}`) : 'Continue'}
+                        {myPendingCard.amount > 0 ? (myPendingCard.isReward ? `Collect $${myPendingCard.amount.toLocaleString('en-US')}` : `Pay $${myPendingCard.amount.toLocaleString('en-US')}`) : 'Continue'}
                       </button>
                     </div>
                   ) : myPendingRentData ? (
@@ -817,13 +817,23 @@ const MonopolyGame: React.FC = () => {
           </div>
           
             <div className="w-full lg:w-1/4 space-y-6">
-              {/* Game Mode Indicator */}
-              <div className="flex justify-center">
-                <Badge 
-                  className="text-lg px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold"
-                >
-                  Mode: {gameState.settings.gameMode.toUpperCase()}
-                </Badge>
+              {/* Active Mode Pills */}
+              <div className="flex flex-wrap gap-1 justify-center">
+                {[
+                  gameState.settings.auctionsEnabled   && { label: '🔨 Auctions',    bg: 'bg-yellow-700/80 border-yellow-500/60' },
+                  gameState.settings.teamsEnabled       && { label: '🤝 Teams',        bg: 'bg-indigo-700/80 border-indigo-500/60' },
+                  gameState.settings.tradingEnabled     && { label: '🔄 Trading',      bg: 'bg-green-700/80 border-green-500/60' },
+                  gameState.settings.workersEnabled     && { label: '👷 Workers',      bg: 'bg-amber-700/80 border-amber-500/60' },
+                  gameState.settings.allowPropertyEditing && { label: '✏️ Editor',     bg: 'bg-purple-700/80 border-purple-500/60' },
+                  gameState.settings.blindPickEnabled   && { label: '🙈 Blind Pick',   bg: 'bg-slate-600/80 border-slate-400/60' },
+                  gameState.settings.mortgageEnabled    && { label: '🏦 Mortgage',     bg: 'bg-rose-700/80 border-rose-500/60' },
+                  !gameState.settings.auctionsEnabled && !gameState.settings.teamsEnabled && !gameState.settings.tradingEnabled
+                    && { label: '🎲 Classic',     bg: 'bg-cyan-700/80 border-cyan-500/60' },
+                ].filter(Boolean).map((m: any) => (
+                  <span key={m.label} className={`text-[0.65rem] font-semibold text-white px-2 py-0.5 rounded-full border ${m.bg}`}>
+                    {m.label}
+                  </span>
+                ))}
               </div>
               
               {/* My Portfolio */}

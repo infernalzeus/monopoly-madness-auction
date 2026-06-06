@@ -127,11 +127,11 @@ const PlayerPanel: React.FC<PlayerPanelProps> = ({
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-gray-700/50 rounded-lg p-2.5">
             <div className="text-xs text-gray-400">Cash</div>
-            <div className="text-base font-bold text-cyan-400">${currentPlayer.balance.toLocaleString()}</div>
+            <div className="text-base font-bold text-cyan-400">${currentPlayer.balance.toLocaleString('en-US')}</div>
           </div>
           <div className="bg-gray-700/50 rounded-lg p-2.5">
             <div className="text-xs text-gray-400">Net Worth</div>
-            <div className="text-base font-bold text-white">${netWorth.toLocaleString()}</div>
+            <div className="text-base font-bold text-white">${netWorth.toLocaleString('en-US')}</div>
           </div>
         </div>
 
