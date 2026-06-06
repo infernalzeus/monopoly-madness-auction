@@ -19,6 +19,7 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useGameLogic, getInitialState } from '@/hooks/useGameLogic';
 import { Property, GameMode, GameSettings, GameEvent, GameState, Player } from '@/types/game';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Crown, Users, TrendingUp, Settings, Gavel, Handshake } from 'lucide-react';
@@ -55,6 +56,7 @@ const MonopolyGame: React.FC = () => {
   const [showRules, setShowRules] = useState(false);
   const [selectedSpecialProperty, setSelectedSpecialProperty] = useState<Property | null>(null);
   const [offerDismissed, setOfferDismissed] = useState(false);
+  const { toast } = useToast();
   
   const {
     gameState,
@@ -200,6 +202,34 @@ const MonopolyGame: React.FC = () => {
     gameState.gamePhase
   ]);
 
+  // Win toast — fires once when winnerId is set
+  useEffect(() => {
+    if (!gameState.winnerId) return;
+    const winner = gameState.players.find(p => p.id === gameState.winnerId);
+    if (!winner) return;
+    if (winner.id === localPlayerId) {
+      toast({ title: '🏆 You Win!', description: `Congratulations ${winner.name}! You're the last player standing!`, duration: 12000 });
+    } else {
+      toast({ title: `🏆 ${winner.name} Wins!`, description: `${winner.name} is the last player standing. Better luck next time!`, duration: 8000 });
+    }
+  }, [gameState.winnerId]);
+
+  // Loss toast — fires when a player goes inactive (bankrupt)
+  const prevActivePlayers = React.useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const currentActiveIds = new Set(gameState.players.filter(p => p.isActive).map(p => p.id));
+    gameState.players.forEach(p => {
+      if (prevActivePlayers.current.has(p.id) && !currentActiveIds.has(p.id)) {
+        if (p.id === localPlayerId) {
+          toast({ title: '💸 You\'re Bankrupt!', description: 'Your balance dropped below zero. Your properties are now inactive.', variant: 'destructive', duration: 10000 });
+        } else {
+          toast({ title: `💸 ${p.name} Bankrupt!`, description: `${p.name} ran out of money and is out of the game.`, duration: 6000 });
+        }
+      }
+    });
+    prevActivePlayers.current = currentActiveIds;
+  }, [gameState.players]);
+
   if (!currentPlayer || !myPlayer) {
     console.log("Waiting for players...");
     return (
@@ -332,7 +362,7 @@ const MonopolyGame: React.FC = () => {
 
   const handleSellProperty = (propertyId: string, amount: number) => {
     // Implementation for selling property to other players or bank
-    console.log(`Selling property ${propertyId} for ₹${amount}`);
+    console.log(`Selling property ${propertyId} for $${amount}`);
   };
 
   const handleTradeOffer = (toPlayer: string, offeredProps: string[], requestedProps: string[]) => {
@@ -602,70 +632,41 @@ const MonopolyGame: React.FC = () => {
 
       {/* Dialogs & Overlays removed from global space to board space */}
       
-      {/* Game Header */}
-      <Card className="mb-6 bg-slate-900 border border-slate-800 shadow-md">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between text-slate-100 w-full">
-            <div className="flex flex-wrap items-center gap-3">
-              <img src="/favicon.svg" alt="Monopoly Madness Icon" className="w-8 h-8 animate-pulse" />
-              <span className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-500">Monopoly Madness</span>
-              <Badge className="bg-emerald-900/50 border-emerald-500/50 text-emerald-300 font-mono text-lg px-4 border-2 shadow-sm">
-                ROOM CODE: {lobbyCode}
+      {/* Game Header — compact single row */}
+      <Card className="mb-3 bg-slate-900 border border-slate-800 shadow-md py-0">
+        <CardHeader className="py-2 px-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <img src="/favicon.svg" alt="Monopoly Madness Icon" className="w-6 h-6 animate-pulse" />
+              <span className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-500">Monopoly Madness</span>
+              <Badge className="bg-emerald-900/50 border-emerald-500/50 text-emerald-300 font-mono px-3 border-2 shadow-sm text-sm">
+                {lobbyCode}
               </Badge>
-              <Badge className="bg-indigo-900/50 text-indigo-300 border border-indigo-700/50 px-3 flex items-center gap-2">
-                <span dangerouslySetInnerHTML={{__html: myPlayer.pieceIcon}} /> 
-                <span className="font-semibold">You: {myPlayer.name}</span>
+              <Badge className="bg-indigo-900/50 text-indigo-300 border border-indigo-700/50 px-2 flex items-center gap-1 text-xs">
+                <span dangerouslySetInnerHTML={{__html: myPlayer.pieceIcon}} />
+                <span>{myPlayer.name}</span>
               </Badge>
-              <Badge className="bg-sky-900/50 text-sky-300 border border-sky-700/50">
-                Phase: {gameState.gamePhase}
+              <Badge className="bg-slate-800/80 text-slate-300 border border-slate-600 px-2 text-xs">
+                Turn {gameState.turn + 1} · {gameState.players.filter(p => p.isActive).length} active
               </Badge>
+            </div>
+            <div className="flex items-center gap-1">
               {isLobbyOwner && gameState.settings.allowPropertyEditing && (
-                <Button
-                  onClick={() => setIsEditorOpen(true)}
-                  className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs h-7 px-3 border border-purple-400/50 transition-all hover:scale-105"
-                >
-                  ✏️ Edit Properties
+                <Button onClick={() => setIsEditorOpen(true)} className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs h-7 px-2 border border-purple-400/50">
+                  ✏️ Edit
                 </Button>
               )}
               {gameState.settings.workersEnabled && (
-                <Button
-                  onClick={() => setIsWorkerPanelOpen(true)}
-                  className="bg-amber-700 hover:bg-amber-600 text-white font-bold text-xs h-7 px-3 border border-amber-500/50 transition-all hover:scale-105"
-                >
-                  👷 Workers
+                <Button onClick={() => setIsWorkerPanelOpen(true)} className="bg-amber-700 hover:bg-amber-600 text-white font-bold text-xs h-7 px-2 border border-amber-500/50">
+                  👷
                 </Button>
               )}
-              <Button
-                onClick={() => setShowRules(true)}
-                className="bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs h-7 px-3 border border-slate-500/60 transition-all hover:scale-105"
-              >
-                📖 Rules
+              <Button onClick={() => setShowRules(true)} className="bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs h-7 px-2 border border-slate-500/60">
+                📖
               </Button>
             </div>
-            
-            <div className="flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                <span>{gameState.players.length} Players</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" />
-                <span>Turn {gameState.turn + 1}</span>
-              </div>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        
-        <CardContent>
-          <div className="flex justify-center">
-            <Badge 
-              className="text-lg px-4 py-2" 
-              style={{ backgroundColor: currentPlayer.color }}
-            >
-              Current Player: {currentPlayer.name}
-            </Badge>
           </div>
-        </CardContent>
+        </CardHeader>
       </Card>
 
       {/* Main Game Layout */}
@@ -711,8 +712,8 @@ const MonopolyGame: React.FC = () => {
                       </div>
                       {jailFine > 0 ? (
                         <div className="bg-rose-950/40 rounded-lg p-3 border border-rose-800/50 text-sm space-y-1">
-                          <p className="text-slate-300">Property income: <span className="text-white font-bold">₹{jailIncome.toLocaleString()}</span></p>
-                          <p className="text-slate-300">Bail fine (20%): <span className="text-rose-300 font-bold">₹{jailFine.toLocaleString()}</span></p>
+                          <p className="text-slate-300">Property income: <span className="text-white font-bold">${jailIncome.toLocaleString()}</span></p>
+                          <p className="text-slate-300">Bail fine (20%): <span className="text-rose-300 font-bold">${jailFine.toLocaleString()}</span></p>
                           <p className="text-xs text-slate-500">Pay now to roll and move freely this turn.</p>
                         </div>
                       ) : (
@@ -724,7 +725,7 @@ const MonopolyGame: React.FC = () => {
                             onClick={payJailFine}
                             className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition-colors"
                           >
-                            Pay ₹{jailFine.toLocaleString()} &amp; Roll
+                            Pay ${jailFine.toLocaleString()} &amp; Roll
                           </button>
                         )}
                         <button
@@ -748,9 +749,9 @@ const MonopolyGame: React.FC = () => {
                       </div>
                       {myPendingCard.amount > 0 ? (
                         <div className={`rounded-lg p-3 border text-sm space-y-1 ${myPendingCard.isReward ? 'bg-yellow-950/40 border-yellow-800/50' : 'bg-red-950/40 border-red-800/50'}`}>
-                          <p className="text-slate-300">Total property income: <span className="text-white font-bold">₹{myPendingCard.income.toLocaleString()}</span></p>
+                          <p className="text-slate-300">Total property income: <span className="text-white font-bold">${myPendingCard.income.toLocaleString()}</span></p>
                           <p className="text-slate-300">Properties owned: <span className="text-white font-bold">{myPendingCard.numProperties}</span></p>
-                          <p className="text-slate-300">10% of income: <span className={`font-bold ${myPendingCard.isReward ? 'text-yellow-300' : 'text-red-300'}`}>{myPendingCard.isReward ? '+' : '-'}₹{myPendingCard.amount.toLocaleString()}</span></p>
+                          <p className="text-slate-300">10% of income: <span className={`font-bold ${myPendingCard.isReward ? 'text-yellow-300' : 'text-red-300'}`}>{myPendingCard.isReward ? '+' : '-'}${myPendingCard.amount.toLocaleString()}</span></p>
                         </div>
                       ) : (
                         <p className="text-slate-400 text-sm">No properties — no reward or penalty this time.</p>
@@ -759,7 +760,7 @@ const MonopolyGame: React.FC = () => {
                         onClick={resolveCard}
                         className={`w-full font-bold py-2 px-4 rounded-lg text-sm transition-colors text-white ${myPendingCard.isReward ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-red-700 hover:bg-red-800'}`}
                       >
-                        {myPendingCard.amount > 0 ? (myPendingCard.isReward ? `Collect ₹${myPendingCard.amount.toLocaleString()}` : `Pay ₹${myPendingCard.amount.toLocaleString()}`) : 'Continue'}
+                        {myPendingCard.amount > 0 ? (myPendingCard.isReward ? `Collect $${myPendingCard.amount.toLocaleString()}` : `Pay $${myPendingCard.amount.toLocaleString()}`) : 'Continue'}
                       </button>
                     </div>
                   ) : myPendingRentData ? (
@@ -894,7 +895,7 @@ const MonopolyGame: React.FC = () => {
                                   )}
                                 </div>
                               </TableCell>
-                              <TableCell className="text-emerald-400 font-mono font-bold tracking-tight">₹{(p.balance/1000).toFixed(0)}K</TableCell>
+                              <TableCell className="text-emerald-400 font-mono font-bold tracking-tight">${(p.balance/1000).toFixed(0)}K</TableCell>
                               <TableCell className="text-slate-200">
                                 {propsOwned.length === 0 ? (
                                   <span className="text-slate-600 italic text-xs">None</span>

@@ -48,7 +48,7 @@ const GameLog: React.FC<GameLogProps> = ({ events, players = [] }) => {
   const formatAmount = (amount?: number) => {
     if (amount === undefined) return '';
     const sign = amount >= 0 ? '+' : '';
-    return `${sign}₹${Math.abs(amount).toLocaleString()}`;
+    return `${sign}$${Math.abs(amount).toLocaleString()}`;
   };
 
   return (

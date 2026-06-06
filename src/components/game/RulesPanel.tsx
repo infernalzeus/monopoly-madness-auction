@@ -44,7 +44,7 @@ const RulesPanel: React.FC<RulesPanelProps> = ({ settings, onClose }) => {
 
           <Section title="Basic Movement" emoji="🎲">
             <Rule>Roll two dice on your turn and move that many spaces around the board.</Rule>
-            <Rule>The board has 40 spaces — when you pass or land on GO, collect <strong className="text-yellow-300">10% of your current cash</strong> (minimum ₹2,00,000).</Rule>
+            <Rule>The board has 40 spaces — when you pass or land on GO, collect <strong className="text-yellow-300">10% of your current cash</strong> (minimum $2,00,000).</Rule>
             <Rule>If you roll doubles, you may roll again after your turn resolves. Three consecutive doubles sends you to Jail.</Rule>
           </Section>
 
@@ -57,7 +57,7 @@ const RulesPanel: React.FC<RulesPanelProps> = ({ settings, onClose }) => {
           <Section title="Rent" emoji="💸">
             <Rule>Landing on another player's property means you owe them rent based on its development level.</Rule>
             <Rule><strong className="text-rose-300">Jailed owners cannot collect rent</strong> — landing on their property is free while they're imprisoned.</Rule>
-            <Rule>Railroads scale from ₹25K (1 owned) → ₹50K → ₹1L → ₹2L (all 4 owned).</Rule>
+            <Rule>Railroads scale from $25K (1 owned) → $50K → $1L → $2L (all 4 owned).</Rule>
             <Rule>Utilities charge 4× dice total (1 utility) or 10× dice total (both utilities).</Rule>
           </Section>
 

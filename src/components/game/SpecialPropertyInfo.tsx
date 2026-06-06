@@ -24,8 +24,8 @@ const SpecialPropertyInfo: React.FC<SpecialPropertyInfoProps> = ({ property, pla
         <div className="space-y-2 text-sm text-slate-300">
           <p>All players start here. Passing or landing on GO earns you income.</p>
           <InfoRow label="PassGO reward" value="10% of current cash" />
-          <InfoRow label="Minimum" value="₹2,00,000" />
-          <p className="text-xs text-slate-500 mt-2">Example: if you have ₹15,00,000, passing GO earns you ₹1,50,000.</p>
+          <InfoRow label="Minimum" value="$1,000,000" />
+          <p className="text-xs text-slate-500 mt-2">Example: if you have $10,000,000, passing GO earns you $1,000,000.</p>
         </div>
       )
     },

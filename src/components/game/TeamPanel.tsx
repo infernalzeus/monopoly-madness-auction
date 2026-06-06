@@ -46,7 +46,7 @@ const TeamPanel: React.FC<TeamPanelProps> = ({ currentPlayer, teams, players = [
                         <span>{team.name}</span>
                         <span className="text-indigo-400 text-xs">{team.members.length} members</span>
                       </div>
-                      <span className="text-emerald-400 font-mono text-xs">₹{(combined / 1000).toFixed(0)}K total</span>
+                      <span className="text-emerald-400 font-mono text-xs">${(combined / 1000).toFixed(0)}K total</span>
                     </Button>
                   );
                 })}
@@ -81,7 +81,7 @@ const TeamPanel: React.FC<TeamPanelProps> = ({ currentPlayer, teams, players = [
                     <span className="text-sm text-indigo-100 font-medium">{member.name}</span>
                     {member.id === currentPlayer.id && <Badge className="text-[0.6rem] bg-indigo-500/30 text-indigo-300 border-0 py-0">You</Badge>}
                   </div>
-                  <span className="text-emerald-400 font-mono text-xs">₹{(member.balance / 1000).toFixed(0)}K</span>
+                  <span className="text-emerald-400 font-mono text-xs">${(member.balance / 1000).toFixed(0)}K</span>
                 </div>
               ))}
             </div>
@@ -91,7 +91,7 @@ const TeamPanel: React.FC<TeamPanelProps> = ({ currentPlayer, teams, players = [
                 <Trophy className="w-3 h-3 text-amber-400" />
               </div>
               <div className="text-xl font-bold text-emerald-400 font-mono">
-                ₹{(players.filter(p => playerTeam.members.includes(p.id)).reduce((s, p) => s + p.balance, 0) / 1000).toFixed(0)}K
+                ${(players.filter(p => playerTeam.members.includes(p.id)).reduce((s, p) => s + p.balance, 0) / 1000).toFixed(0)}K
               </div>
             </div>
             <p className="text-[10px] text-indigo-400/60 italic text-center">

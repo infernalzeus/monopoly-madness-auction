@@ -145,7 +145,7 @@ const TradingSystem: React.FC<TradingSystemProps> = ({
                       onClick={() => togglePropertySelection(property.id, true)}
                     >
                       <div className="text-sm text-purple-200">{property.name}</div>
-                      <div className="text-xs text-purple-400">₹{property.currentValue.toLocaleString()}</div>
+                      <div className="text-xs text-purple-400">${property.currentValue.toLocaleString()}</div>
                     </div>
                   ))}
                 </div>
@@ -220,13 +220,13 @@ const TradingSystem: React.FC<TradingSystemProps> = ({
                         const prop = ownedProperties.find(p => p.id === propId);
                         return prop ? (
                           <div key={propId} className="text-purple-200 text-xs">
-                            🏠 {prop.name} (₹{prop.currentValue.toLocaleString()})
+                            🏠 {prop.name} (${prop.currentValue.toLocaleString()})
                           </div>
                         ) : null;
                       })}
                       {offer.offeredCash > 0 && (
                         <div className="text-green-300 text-xs">
-                          💰 ₹{offer.offeredCash.toLocaleString()}
+                          💰 ${offer.offeredCash.toLocaleString()}
                         </div>
                       )}
                     </div>
@@ -239,13 +239,13 @@ const TradingSystem: React.FC<TradingSystemProps> = ({
                         const prop = ownedProperties.find(p => p.id === propId);
                         return prop ? (
                           <div key={propId} className="text-purple-200 text-xs">
-                            🏠 {prop.name} (₹{prop.currentValue.toLocaleString()})
+                            🏠 {prop.name} (${prop.currentValue.toLocaleString()})
                           </div>
                         ) : null;
                       })}
                       {offer.requestedCash > 0 && (
                         <div className="text-red-300 text-xs">
-                          💰 ₹{offer.requestedCash.toLocaleString()}
+                          💰 ${offer.requestedCash.toLocaleString()}
                         </div>
                       )}
                     </div>

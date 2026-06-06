@@ -24,110 +24,110 @@ const initialGameSettings: GameSettings = {
   mortgageEnabled: true,
   tradingEnabled: true,
   auctionDuration: 120,
-  turnTimerDuration: 60, // 60s default per turn
+  turnTimerDuration: 60,
   maxPlayers: 8,
-  startingBalance: 1500000, // ₹15 lakh starting balance
-  passGoReward: 200000, // ₹2 lakh for passing GO
-  jailFine: 50000, // ₹50k to get out of jail
+  startingBalance: 10000000, // $10M starting balance
+  passGoReward: 1000000,     // $1M minimum for passing GO
+  jailFine: 500000,          // $500K to get out of jail
   allowPropertyEditing: true,
   isPrivate: false,
   gameType: 'standard',
   blindPickEnabled: false,
   preAuctionProperties: [],
   customPropertyLists: {
-    'brown_group': ['prop-1', 'prop-3'],
-    'light_blue_group': ['prop-6', 'prop-8', 'prop-9'],
-    'pink_group': ['prop-11', 'prop-13', 'prop-14'],
-    'orange_group': ['prop-16', 'prop-18', 'prop-19'],
-    'red_group': ['prop-21', 'prop-23', 'prop-24'],
-    'yellow_group': ['prop-26', 'prop-27', 'prop-29'],
-    'green_group': ['prop-31', 'prop-32', 'prop-34'],
-    'dark_blue_group': ['prop-37', 'prop-39'],
+    'brown': ['prop-1', 'prop-3'],
+    'lightBlue': ['prop-6', 'prop-8', 'prop-9'],
+    'pink': ['prop-11', 'prop-13', 'prop-14'],
+    'orange': ['prop-16', 'prop-18', 'prop-19'],
+    'red': ['prop-21', 'prop-23', 'prop-24'],
+    'yellow': ['prop-26', 'prop-27', 'prop-29'],
+    'green': ['prop-31', 'prop-32', 'prop-34'],
+    'darkBlue': ['prop-37', 'prop-39'],
     'railroads': ['prop-5', 'prop-15', 'prop-25', 'prop-35'],
     'utilities': ['prop-12', 'prop-28']
   }
 };
 
 const generateInitialProperties = (): Property[] => {
-  const indianProperties = [
+  const worldProperties = [
     // GO (position 0)
     { name: 'GO', type: 'special', colorGroup: undefined, rent: [0], position: 0 },
-    
-    // Brown Group (1-3) - Delhi area
-    { name: 'Delhi', type: 'property', colorGroup: 'brown', rent: [2000, 10000, 30000, 90000, 160000, 250000], position: 1 },
+
+    // Brown Group (1-3)
+    { name: 'London', type: 'property', colorGroup: 'brown', rent: [2000, 10000, 30000, 90000, 160000, 250000], position: 1 },
     { name: 'Community Chest', type: 'special', colorGroup: undefined, rent: [0], position: 2 },
-    { name: 'Patna', type: 'property', colorGroup: 'brown', rent: [4000, 20000, 60000, 180000, 320000, 450000], position: 3 },
-    
+    { name: 'Paris', type: 'property', colorGroup: 'brown', rent: [4000, 20000, 60000, 180000, 320000, 450000], position: 3 },
+
     // Income Tax (4)
     { name: 'Income Tax', type: 'special', colorGroup: undefined, rent: [0], position: 4 },
-    
+
     // Railroad (5)
-    { name: 'Mumbai Local', type: 'railroad', colorGroup: undefined, rent: [25000, 50000, 100000, 200000], position: 5 },
-    
-    // Light Blue Group (6-9) - Mumbai area
-    { name: 'Mumbai', type: 'property', colorGroup: 'lightBlue', rent: [6000, 30000, 90000, 270000, 400000, 550000], position: 6 },
+    { name: 'Orient Express', type: 'railroad', colorGroup: undefined, rent: [25000, 50000, 100000, 200000], position: 5 },
+
+    // Light Blue Group (6-9)
+    { name: 'New York', type: 'property', colorGroup: 'lightBlue', rent: [6000, 30000, 90000, 270000, 400000, 550000], position: 6 },
     { name: 'Chance', type: 'special', colorGroup: undefined, rent: [0], position: 7 },
-    { name: 'Pune', type: 'property', colorGroup: 'lightBlue', rent: [6000, 30000, 90000, 270000, 400000, 550000], position: 8 },
-    { name: 'Nashik', type: 'property', colorGroup: 'lightBlue', rent: [8000, 40000, 100000, 300000, 450000, 600000], position: 9 },
-    
+    { name: 'Chicago', type: 'property', colorGroup: 'lightBlue', rent: [6000, 30000, 90000, 270000, 400000, 550000], position: 8 },
+    { name: 'Los Angeles', type: 'property', colorGroup: 'lightBlue', rent: [8000, 40000, 100000, 300000, 450000, 600000], position: 9 },
+
     // Jail (10)
     { name: 'Jail', type: 'special', colorGroup: undefined, rent: [0], position: 10 },
-    
-    // Pink Group (11-14) - Bangalore area
-    { name: 'Bangalore', type: 'property', colorGroup: 'pink', rent: [10000, 50000, 150000, 450000, 625000, 750000], position: 11 },
-    { name: 'Electric Company', type: 'utility', colorGroup: undefined, rent: [0], position: 12 },
-    { name: 'Mysore', type: 'property', colorGroup: 'pink', rent: [10000, 50000, 150000, 450000, 625000, 750000], position: 13 },
-    { name: 'Mangalore', type: 'property', colorGroup: 'pink', rent: [12000, 60000, 180000, 500000, 700000, 900000], position: 14 },
-    
+
+    // Pink Group (11-14)
+    { name: 'Tokyo', type: 'property', colorGroup: 'pink', rent: [10000, 50000, 150000, 450000, 625000, 750000], position: 11 },
+    { name: 'Power Grid', type: 'utility', colorGroup: undefined, rent: [0], position: 12 },
+    { name: 'Seoul', type: 'property', colorGroup: 'pink', rent: [10000, 50000, 150000, 450000, 625000, 750000], position: 13 },
+    { name: 'Osaka', type: 'property', colorGroup: 'pink', rent: [12000, 60000, 180000, 500000, 700000, 900000], position: 14 },
+
     // Railroad (15)
-    { name: 'Chennai Metro', type: 'railroad', colorGroup: undefined, rent: [25000, 50000, 100000, 200000], position: 15 },
-    
-    // Orange Group (16-19) - Chennai area
-    { name: 'Chennai', type: 'property', colorGroup: 'orange', rent: [14000, 70000, 200000, 550000, 750000, 950000], position: 16 },
+    { name: 'Trans-Siberian Rail', type: 'railroad', colorGroup: undefined, rent: [25000, 50000, 100000, 200000], position: 15 },
+
+    // Orange Group (16-19)
+    { name: 'Dubai', type: 'property', colorGroup: 'orange', rent: [14000, 70000, 200000, 550000, 750000, 950000], position: 16 },
     { name: 'Community Chest', type: 'special', colorGroup: undefined, rent: [0], position: 17 },
-    { name: 'Coimbatore', type: 'property', colorGroup: 'orange', rent: [14000, 70000, 200000, 550000, 750000, 950000], position: 18 },
-    { name: 'Madurai', type: 'property', colorGroup: 'orange', rent: [16000, 80000, 220000, 600000, 800000, 1000000], position: 19 },
-    
+    { name: 'Abu Dhabi', type: 'property', colorGroup: 'orange', rent: [14000, 70000, 200000, 550000, 750000, 950000], position: 18 },
+    { name: 'Doha', type: 'property', colorGroup: 'orange', rent: [16000, 80000, 220000, 600000, 800000, 1000000], position: 19 },
+
     // Free Parking (20)
     { name: 'Free Parking', type: 'special', colorGroup: undefined, rent: [0], position: 20 },
-    
-    // Red Group (21-24) - Kolkata area
-    { name: 'Kolkata', type: 'property', colorGroup: 'red', rent: [18000, 90000, 250000, 700000, 875000, 1050000], position: 21 },
+
+    // Red Group (21-24)
+    { name: 'Moscow', type: 'property', colorGroup: 'red', rent: [18000, 90000, 250000, 700000, 875000, 1050000], position: 21 },
     { name: 'Chance', type: 'special', colorGroup: undefined, rent: [0], position: 22 },
-    { name: 'Durgapur', type: 'property', colorGroup: 'red', rent: [18000, 90000, 250000, 700000, 875000, 1050000], position: 23 },
-    { name: 'Siliguri', type: 'property', colorGroup: 'red', rent: [20000, 100000, 300000, 750000, 925000, 1100000], position: 24 },
-    
+    { name: 'Berlin', type: 'property', colorGroup: 'red', rent: [18000, 90000, 250000, 700000, 875000, 1050000], position: 23 },
+    { name: 'Rome', type: 'property', colorGroup: 'red', rent: [20000, 100000, 300000, 750000, 925000, 1100000], position: 24 },
+
     // Railroad (25)
-    { name: 'Delhi Metro', type: 'railroad', colorGroup: undefined, rent: [25000, 50000, 100000, 200000], position: 25 },
-    
-    // Yellow Group (26-29) - Delhi area
-    { name: 'Gurgaon', type: 'property', colorGroup: 'yellow', rent: [22000, 110000, 330000, 800000, 975000, 1150000], position: 26 },
-    { name: 'Noida', type: 'property', colorGroup: 'yellow', rent: [22000, 110000, 330000, 800000, 975000, 1150000], position: 27 },
-    { name: 'Water Works', type: 'utility', colorGroup: undefined, rent: [0], position: 28 },
-    { name: 'Faridabad', type: 'property', colorGroup: 'yellow', rent: [24000, 120000, 360000, 850000, 1025000, 1200000], position: 29 },
-    
+    { name: 'Pan-Pacific Express', type: 'railroad', colorGroup: undefined, rent: [25000, 50000, 100000, 200000], position: 25 },
+
+    // Yellow Group (26-29)
+    { name: 'Sydney', type: 'property', colorGroup: 'yellow', rent: [22000, 110000, 330000, 800000, 975000, 1150000], position: 26 },
+    { name: 'Melbourne', type: 'property', colorGroup: 'yellow', rent: [22000, 110000, 330000, 800000, 975000, 1150000], position: 27 },
+    { name: 'Waterworks', type: 'utility', colorGroup: undefined, rent: [0], position: 28 },
+    { name: 'Brisbane', type: 'property', colorGroup: 'yellow', rent: [24000, 120000, 360000, 850000, 1025000, 1200000], position: 29 },
+
     // Go to Jail (30)
     { name: 'Go to Jail', type: 'special', colorGroup: undefined, rent: [0], position: 30 },
-    
-    // Green Group (31-34) - Hyderabad area
-    { name: 'Hyderabad', type: 'property', colorGroup: 'green', rent: [26000, 130000, 390000, 900000, 1100000, 1275000], position: 31 },
-    { name: 'Secunderabad', type: 'property', colorGroup: 'green', rent: [26000, 130000, 390000, 900000, 1100000, 1275000], position: 32 },
+
+    // Green Group (31-34)
+    { name: 'São Paulo', type: 'property', colorGroup: 'green', rent: [26000, 130000, 390000, 900000, 1100000, 1275000], position: 31 },
+    { name: 'Buenos Aires', type: 'property', colorGroup: 'green', rent: [26000, 130000, 390000, 900000, 1100000, 1275000], position: 32 },
     { name: 'Community Chest', type: 'special', colorGroup: undefined, rent: [0], position: 33 },
-    { name: 'Warangal', type: 'property', colorGroup: 'green', rent: [28000, 150000, 450000, 1000000, 1200000, 1400000], position: 34 },
-    
+    { name: 'Mexico City', type: 'property', colorGroup: 'green', rent: [28000, 150000, 450000, 1000000, 1200000, 1400000], position: 34 },
+
     // Railroad (35)
-    { name: 'Hyderabad Metro', type: 'railroad', colorGroup: undefined, rent: [25000, 50000, 100000, 200000], position: 35 },
-    
+    { name: 'Trans-Atlantic Rail', type: 'railroad', colorGroup: undefined, rent: [25000, 50000, 100000, 200000], position: 35 },
+
     // Chance (36)
     { name: 'Chance', type: 'special', colorGroup: undefined, rent: [0], position: 36 },
-    
-    // Dark Blue Group (37-39) - Gurgaon/Delhi area
-    { name: 'Indore', type: 'property', colorGroup: 'darkBlue', rent: [35000, 175000, 500000, 1100000, 1300000, 1500000], position: 37 },
+
+    // Dark Blue Group (37-39)
+    { name: 'Singapore', type: 'property', colorGroup: 'darkBlue', rent: [35000, 175000, 500000, 1100000, 1300000, 1500000], position: 37 },
     { name: 'Luxury Tax', type: 'special', colorGroup: undefined, rent: [0], position: 38 },
-    { name: 'Bhopal', type: 'property', colorGroup: 'darkBlue', rent: [50000, 200000, 600000, 1400000, 1700000, 2000000], position: 39 }
+    { name: 'Hong Kong', type: 'property', colorGroup: 'darkBlue', rent: [50000, 200000, 600000, 1400000, 1700000, 2000000], position: 39 }
   ];
 
-  return indianProperties.map((prop, index) => ({
+  return worldProperties.map((prop, index) => ({
     id: `prop-${index}`,
     name: prop.name,
     type: prop.type as 'property' | 'railroad' | 'utility' | 'special',
@@ -143,8 +143,9 @@ const generateInitialProperties = (): Property[] => {
     isOwned: false,
     isMortgaged: false,
     isInAuction: false,
+    isInactive: false,
     position: prop.position,
-    description: `${prop.name} - ${prop.type === 'property' ? 'Property' : prop.type === 'railroad' ? 'Railroad' : prop.type === 'utility' ? 'Utility' : 'Special'}`
+    description: `${prop.name} — ${prop.type === 'property' ? 'Property' : prop.type === 'railroad' ? 'Railroad' : prop.type === 'utility' ? 'Utility' : 'Special'}`
   }));
 };
 
@@ -265,40 +266,40 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
 
   // Chance and Community Chest decks (16 each). Simple representative effects.
   const chanceDeck = useState(() => shuffleArray([
-    { id: 'ch-1', type: 'move', value: 0, message: 'Advance to GO (Collect ₹2,00,000)' },
-    { id: 'ch-2', type: 'pay', value: 150000, message: 'Pay school fees of ₹1,50,000' },
-    { id: 'ch-3', type: 'collect', value: 100000, message: 'Bank pays you dividend of ₹1,00,000' },
+    { id: 'ch-1', type: 'move', value: 0, message: 'Advance to GO (Collect $2,00,000)' },
+    { id: 'ch-2', type: 'pay', value: 150000, message: 'Pay school fees of $1,50,000' },
+    { id: 'ch-3', type: 'collect', value: 100000, message: 'Bank pays you dividend of $1,00,000' },
     { id: 'ch-4', type: 'move', value: 24, message: 'Advance to New Market' },
     { id: 'ch-5', type: 'jail', value: 0, message: 'Go to Jail' },
     { id: 'ch-6', type: 'outOfJail', value: 0, message: 'Get out of Jail free (keep until needed)' },
-    { id: 'ch-7', type: 'collect', value: 50000, message: 'Your building loan matures – collect ₹50,000' },
-    { id: 'ch-8', type: 'pay', value: 25000, message: 'Speeding fine – pay ₹25,000' },
+    { id: 'ch-7', type: 'collect', value: 50000, message: 'Your building loan matures – collect $50,000' },
+    { id: 'ch-8', type: 'pay', value: 25000, message: 'Speeding fine – pay $25,000' },
     { id: 'ch-9', type: 'move', value: 11, message: 'Go to Brigade Road' },
-    { id: 'ch-10', type: 'collect', value: 200000, message: 'You have won a crossword competition – collect ₹2,00,000' },
-    { id: 'ch-11', type: 'pay', value: 100000, message: 'Pay income tax arrears of ₹1,00,000' },
-    { id: 'ch-12', type: 'collect', value: 150000, message: 'Your stocks rise – collect ₹1,50,000' },
-    { id: 'ch-13', type: 'move', value: 5, message: 'Take a trip on Mumbai Local – if you pass GO collect ₹2,00,000' },
+    { id: 'ch-10', type: 'collect', value: 200000, message: 'You have won a crossword competition – collect $2,00,000' },
+    { id: 'ch-11', type: 'pay', value: 100000, message: 'Pay income tax arrears of $1,00,000' },
+    { id: 'ch-12', type: 'collect', value: 150000, message: 'Your stocks rise – collect $1,50,000' },
+    { id: 'ch-13', type: 'move', value: 5, message: 'Take a trip on Mumbai Local – if you pass GO collect $2,00,000' },
     { id: 'ch-14', type: 'move', value: 39, message: 'Advance to DLF Phase 1' },
-    { id: 'ch-15', type: 'collect', value: 50000, message: 'Insurance payout – collect ₹50,000' },
-    { id: 'ch-16', type: 'pay', value: 50000, message: 'Doctor’s fees – pay ₹50,000' }
+    { id: 'ch-15', type: 'collect', value: 50000, message: 'Insurance payout – collect $50,000' },
+    { id: 'ch-16', type: 'pay', value: 50000, message: 'Doctor’s fees – pay $50,000' }
   ]))[0];
   const communityDeck = useState(() => shuffleArray([
-    { id: 'cc-1', type: 'collect', value: 200000, message: 'Advance to GO (Collect ₹2,00,000)' },
-    { id: 'cc-2', type: 'collect', value: 100000, message: 'You inherit ₹1,00,000' },
-    { id: 'cc-3', type: 'pay', value: 50000, message: 'Pay hospital fees of ₹50,000' },
-    { id: 'cc-4', type: 'collect', value: 50000, message: 'From sale of stock you get ₹50,000' },
-    { id: 'cc-5', type: 'collect', value: 25000, message: 'Receive interest on 7% preference shares – ₹25,000' },
+    { id: 'cc-1', type: 'collect', value: 200000, message: 'Advance to GO (Collect $2,00,000)' },
+    { id: 'cc-2', type: 'collect', value: 100000, message: 'You inherit $1,00,000' },
+    { id: 'cc-3', type: 'pay', value: 50000, message: 'Pay hospital fees of $50,000' },
+    { id: 'cc-4', type: 'collect', value: 50000, message: 'From sale of stock you get $50,000' },
+    { id: 'cc-5', type: 'collect', value: 25000, message: 'Receive interest on 7% preference shares – $25,000' },
     { id: 'cc-6', type: 'jail', value: 0, message: 'Go to Jail' },
     { id: 'cc-7', type: 'outOfJail', value: 0, message: 'Get out of Jail free (keep until needed)' },
-    { id: 'cc-8', type: 'pay', value: 25000, message: 'Pay education fees of ₹25,000' },
-    { id: 'cc-9', type: 'collect', value: 50000, message: 'You have won second prize in a beauty contest – collect ₹50,000' },
-    { id: 'cc-10', type: 'collect', value: 100000, message: 'Grand Opera Night – collect ₹1,00,000' },
-    { id: 'cc-11', type: 'collect', value: 50000, message: 'Income tax refund – collect ₹50,000' },
-    { id: 'cc-12', type: 'pay', value: 100000, message: 'Life insurance premium due – pay ₹1,00,000' },
-    { id: 'cc-13', type: 'collect', value: 75000, message: 'Birthday gift – collect ₹75,000' },
-    { id: 'cc-14', type: 'pay', value: 25000, message: 'Speeding fine – pay ₹25,000' },
-    { id: 'cc-15', type: 'collect', value: 150000, message: 'Tax rebate – collect ₹1,50,000' },
-    { id: 'cc-16', type: 'pay', value: 50000, message: 'Maintenance – pay ₹50,000' }
+    { id: 'cc-8', type: 'pay', value: 25000, message: 'Pay education fees of $25,000' },
+    { id: 'cc-9', type: 'collect', value: 50000, message: 'You have won second prize in a beauty contest – collect $50,000' },
+    { id: 'cc-10', type: 'collect', value: 100000, message: 'Grand Opera Night – collect $1,00,000' },
+    { id: 'cc-11', type: 'collect', value: 50000, message: 'Income tax refund – collect $50,000' },
+    { id: 'cc-12', type: 'pay', value: 100000, message: 'Life insurance premium due – pay $1,00,000' },
+    { id: 'cc-13', type: 'collect', value: 75000, message: 'Birthday gift – collect $75,000' },
+    { id: 'cc-14', type: 'pay', value: 25000, message: 'Speeding fine – pay $25,000' },
+    { id: 'cc-15', type: 'collect', value: 150000, message: 'Tax rebate – collect $1,50,000' },
+    { id: 'cc-16', type: 'pay', value: 50000, message: 'Maintenance – pay $50,000' }
   ]))[0];
   const [heldOutOfJailCards, setHeldOutOfJailCards] = useState<Record<string, number>>({});
 
@@ -652,6 +653,27 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
 
   const purchaseProperty = useCallback((propertyId: string) => {
     setGameState((prev: GameState) => {
+      const property = prev.properties.find(p => p.id === propertyId);
+      const buyer = prev.players.find(p => p.id === prev.currentPlayer);
+
+      // Buying a mortgaged property from its current owner at mortgage value
+      if (property?.isMortgaged && property.isOwned && buyer) {
+        const price = property.mortgageValue || Math.round(property.currentValue * 0.5);
+        if (buyer.balance < price) return prev;
+        const prevOwner = property.owner;
+        const newProperties = prev.properties.map(p =>
+          p.id === propertyId ? { ...p, isOwned: true, owner: buyer.name, isMortgaged: false } : p
+        );
+        const newPlayers = prev.players.map(p => {
+          if (p.id === prev.currentPlayer) return { ...p, balance: p.balance - price, properties: [...p.properties, propertyId] };
+          if (p.name === prevOwner) return { ...p, balance: p.balance + price, properties: p.properties.filter(pid => pid !== propertyId) };
+          return p;
+        });
+        const ev = { id: `ev-${Date.now()}`, type: 'purchase' as const, player: buyer.name, message: `bought mortgaged ${property.name} for $${price.toLocaleString()}`, timestamp: Date.now(), amount: -price };
+        return advanceTurnLogic({ ...prev, properties: newProperties, players: newPlayers, pendingPurchase: null, gameEvents: [...prev.gameEvents.slice(-19), ev] });
+      }
+
+      // Normal purchase
       let next = handlePropertyPurchase(prev, propertyId, prev.currentPlayer);
       if (next !== prev) return advanceTurnLogic(next);
       return next;
@@ -685,7 +707,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
     addGameEvent(
       'trade',
       currentPlayer.name,
-      `offered ₹${amount.toLocaleString()} to ${toPlayerName} for ${property.name}`,
+      `offered $${amount.toLocaleString()} to ${toPlayerName} for ${property.name}`,
       amount
     );
   }, [gameState.players, gameState.currentPlayer, gameState.properties, addGameEvent]);
@@ -752,7 +774,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
       properties: prev.properties.map(p => p.id === propertyId ? { ...p, houses: p.houses + 1 } : p),
       players: prev.players.map(pl => pl.id === currentPlayer.id ? { ...pl, balance: pl.balance - cost } : pl)
     }));
-    addGameEvent('build', currentPlayer.name, `built a house on ${property.name} for ₹${cost.toLocaleString()}`, -cost);
+    addGameEvent('build', currentPlayer.name, `built a house on ${property.name} for $${cost.toLocaleString()}`, -cost);
   }, [gameState.properties, gameState.players, gameState.currentPlayer, canBuildHouse, addGameEvent]);
 
   const sellHouse = useCallback((propertyId: string) => {
@@ -767,7 +789,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
       properties: prev.properties.map(p => p.id === propertyId ? { ...p, houses: p.houses - 1 } : p),
       players: prev.players.map(pl => pl.id === currentPlayer.id ? { ...pl, balance: pl.balance + refund } : pl)
     }));
-    addGameEvent('build', currentPlayer.name, `sold a house on ${property.name} for ₹${refund.toLocaleString()}`, refund);
+    addGameEvent('build', currentPlayer.name, `sold a house on ${property.name} for $${refund.toLocaleString()}`, refund);
   }, [gameState.properties, gameState.players, gameState.currentPlayer, addGameEvent]);
 
   const buildHotel = useCallback((propertyId: string) => {
@@ -782,7 +804,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
       properties: prev.properties.map(p => p.id === propertyId ? { ...p, hasHotel: true, houses: 0 } : p),
       players: prev.players.map(pl => pl.id === currentPlayer.id ? { ...pl, balance: pl.balance - cost } : pl)
     }));
-    addGameEvent('build', currentPlayer.name, `built a hotel on ${property.name} for ₹${cost.toLocaleString()}`, -cost);
+    addGameEvent('build', currentPlayer.name, `built a hotel on ${property.name} for $${cost.toLocaleString()}`, -cost);
   }, [gameState.properties, gameState.players, gameState.currentPlayer, addGameEvent]);
 
   const sellHotel = useCallback((propertyId: string) => {
@@ -796,7 +818,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
       properties: prev.properties.map(p => p.id === propertyId ? { ...p, hasHotel: false, houses: 4 } : p),
       players: prev.players.map(pl => pl.id === currentPlayer.id ? { ...pl, balance: pl.balance + refund } : pl)
     }));
-    addGameEvent('build', currentPlayer.name, `sold a hotel on ${property.name} for ₹${refund.toLocaleString()}`, refund);
+    addGameEvent('build', currentPlayer.name, `sold a hotel on ${property.name} for $${refund.toLocaleString()}`, refund);
   }, [gameState.properties, gameState.players, gameState.currentPlayer, addGameEvent]);
 
   function movePlayerToJail(state: GameState, playerId: string): GameState {
@@ -1192,7 +1214,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
         id: `event-${Date.now()}`,
         type: 'rent',
         player: payerName,
-        message: `paid ₹${rentAmount.toLocaleString()} rent to ${rentOwner}${property ? ` for ${property.name}` : ''}`,
+        message: `paid $${rentAmount.toLocaleString()} rent to ${rentOwner}${property ? ` for ${property.name}` : ''}`,
         timestamp: Date.now(),
         amount: -rentAmount
       };
@@ -1231,7 +1253,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
           : p
       )
     }));
-    addGameEvent('jail', cp.name, `paid ₹${fine.toLocaleString()} jail fine (20% of ₹${income.toLocaleString()} property income)`, -fine);
+    addGameEvent('jail', cp.name, `paid $${fine.toLocaleString()} jail fine (20% of $${income.toLocaleString()} property income)`, -fine);
   }, [gameState.players, gameState.currentPlayer, gameState.properties, addGameEvent, setGameState]);
 
   const skipJailTurn = useCallback(() => {
@@ -1274,14 +1296,16 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
         type: 'card',
         player: cp.name,
         message: pc.amount > 0
-          ? `${cardLabel} (${rollLabel}): ${pc.isReward ? '+' : '-'}₹${pc.amount.toLocaleString()} from ${pc.numProperties} prop${pc.numProperties !== 1 ? 's' : ''}`
+          ? `${cardLabel} (${rollLabel}): ${pc.isReward ? '+' : '-'}$${pc.amount.toLocaleString()} from ${pc.numProperties} prop${pc.numProperties !== 1 ? 's' : ''}`
           : `${cardLabel} (${rollLabel}): No properties — no change`,
         timestamp: Date.now(),
         amount: pc.amount > 0 ? (pc.isReward ? pc.amount : -pc.amount) : undefined
       };
 
+      const baseNext = { ...prev, pendingCard: null, gameEvents: [...prev.gameEvents.slice(-19), event] };
+
       if (pc.amount <= 0) {
-        return { ...prev, pendingCard: null, turnState: 'completed' as const, gameEvents: [...prev.gameEvents.slice(-19), event] };
+        return advanceTurnLogic(baseNext);
       }
 
       let players = prev.players.map(p => {
@@ -1289,21 +1313,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
         return { ...p, balance: p.balance + (pc.isReward ? pc.amount : -pc.amount) };
       });
 
-      // Check bankruptcy if penalty
-      if (!pc.isReward) {
-        const payerIdx = players.findIndex(p => p.id === prev.currentPlayer);
-        if (payerIdx !== -1 && players[payerIdx].balance < 0) {
-          players[payerIdx] = { ...players[payerIdx], isActive: false };
-        }
-      }
-
-      return {
-        ...prev,
-        players,
-        pendingCard: null,
-        turnState: 'completed' as const,
-        gameEvents: [...prev.gameEvents.slice(-19), event]
-      };
+      return advanceTurnLogic({ ...baseNext, players });
     });
   }, [setGameState]);
 

@@ -46,26 +46,26 @@ const WorkerFaceInPanel: React.FC<{ color: string }> = ({ color }) => {
       style={{ backgroundColor: color }}
       title="Worker assigned"
     >
-      {/* Eyes */}
-      <div className="absolute inset-0 flex justify-center items-center gap-[3px]" style={{ paddingTop: '18%' }}>
+      {/* Eyes — upper third of face */}
+      <div className="absolute inset-0 flex justify-center gap-[4px]" style={{ paddingTop: '22%', paddingBottom: '45%' }}>
         <div
-          className="rounded-full bg-black/80"
-          style={{ width: 4, height: blink ? 1 : 4, transition: 'height 0.07s' }}
+          className="rounded-full bg-black/80 self-center"
+          style={{ width: 5, height: blink ? 1 : 5, transition: 'height 0.07s' }}
         />
         <div
-          className="rounded-full bg-black/80"
-          style={{ width: 4, height: blink ? 1 : 4, transition: 'height 0.07s' }}
+          className="rounded-full bg-black/80 self-center"
+          style={{ width: 5, height: blink ? 1 : 5, transition: 'height 0.07s' }}
         />
       </div>
-      {/* Smile */}
-      <div className="absolute inset-0 flex justify-center items-end" style={{ paddingBottom: '16%' }}>
+      {/* Smile — lower third of face */}
+      <div className="absolute inset-0 flex justify-center items-end" style={{ paddingBottom: '14%' }}>
         <div style={{
-          width: 8,
-          height: 4,
-          borderBottom: '1.5px solid white',
-          borderLeft: '1.5px solid white',
-          borderRight: '1.5px solid white',
-          borderRadius: '0 0 6px 6px',
+          width: 10,
+          height: 5,
+          borderBottom: '2px solid white',
+          borderLeft: '2px solid white',
+          borderRight: '2px solid white',
+          borderRadius: '0 0 8px 8px',
         }} />
       </div>
     </div>
@@ -127,11 +127,11 @@ const PlayerPanel: React.FC<PlayerPanelProps> = ({
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-gray-700/50 rounded-lg p-2.5">
             <div className="text-xs text-gray-400">Cash</div>
-            <div className="text-base font-bold text-cyan-400">₹{currentPlayer.balance.toLocaleString()}</div>
+            <div className="text-base font-bold text-cyan-400">${currentPlayer.balance.toLocaleString()}</div>
           </div>
           <div className="bg-gray-700/50 rounded-lg p-2.5">
             <div className="text-xs text-gray-400">Net Worth</div>
-            <div className="text-base font-bold text-white">₹{netWorth.toLocaleString()}</div>
+            <div className="text-base font-bold text-white">${netWorth.toLocaleString()}</div>
           </div>
         </div>
 
@@ -184,8 +184,8 @@ const PlayerPanel: React.FC<PlayerPanelProps> = ({
 
                     {/* Value/Rent row */}
                     <div className="flex gap-3 mt-1 text-xs">
-                      <span className="text-slate-400">₹{(property.currentValue / 1000).toFixed(0)}K</span>
-                      <span className="text-green-400">Rent ₹{(currentRent / 1000).toFixed(0)}K</span>
+                      <span className="text-slate-400">${(property.currentValue / 1000).toFixed(0)}K</span>
+                      <span className="text-green-400">Rent ${(currentRent / 1000).toFixed(0)}K</span>
                     </div>
                   </div>
 

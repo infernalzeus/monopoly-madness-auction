@@ -163,8 +163,9 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
       return (
         <div
           key={position}
-          className="bg-slate-900 text-slate-200 border border-slate-800 flex flex-col items-center justify-center p-0.5 sm:p-1 shadow-sm rounded-sm relative overflow-hidden"
+          className="bg-slate-900 text-slate-200 border border-slate-800 flex flex-col items-center justify-center p-0.5 sm:p-1 shadow-sm rounded-sm relative overflow-hidden cursor-pointer hover:bg-slate-800 transition-colors"
           style={{ gridRow: row, gridColumn: col }}
+          onClick={() => onPropertyClick(property)}
         >
           <div className="flex-shrink-0">{icon}</div>
           <span className="text-[0.38rem] sm:text-[0.5rem] font-bold text-center mt-0.5 uppercase leading-tight break-words w-full px-0.5 overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
@@ -246,7 +247,7 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
               )}
               {!isChanceOrCC && (
                 <span className="text-[0.38rem] sm:text-[0.52rem] font-bold text-slate-400 tracking-tight">
-                  ₹{(property.baseValue / 1000)}K
+                  ${(property.baseValue / 1000)}K
                 </span>
               )}
             </div>

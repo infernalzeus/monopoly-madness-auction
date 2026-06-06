@@ -560,6 +560,28 @@ In `movePlayer()` (`core.ts`), when `passedGo && settings.workersEnabled`:
 
 ---
 
+## 🌍 v1.0.9.8 — Global Edition
+
+### Summary of all changes in this version
+
+| Area | Change |
+|---|---|
+| **Properties** | All 22 city/utility/railroad names replaced with international cities (London, Paris, New York … Hong Kong) |
+| **Currency** | All ₹ references replaced with $ across every component, hook, and engine file |
+| **Starting balance** | $10,000,000 (was $1,500,000). passGoReward → $1,000,000; jailFine → $500,000 |
+| **Lobby page** | Version badge updated; byline changed; feature highlight pills added; Active Lobbies always shows 'waiting' games; token conflict prevention when joining |
+| **Chance/CC bug** | `resolveCard` now directly calls `advanceTurnLogic` (was relying on auto-advance useEffect which could miss); "Continue" button always advances turn |
+| **Workers** | White smile added to WorkerFace (larger eyes, clear gap between eyes and smile); gradient bar removed from panel; description updated |
+| **Board text** | `break-all` → `break-words` on property name cells; corner tiles (GO/Jail/Free Parking/Go to Jail) now clickable |
+| **Auction** | Seller sees "Collect Bid" or "End Auction (turn passes)" button during live auction |
+| **Property offers** | Offer panel only shows on my turn after rolling; Pass button advances turn; sends real TradeOffer; `offerDismissed` state prevents stale display |
+| **Mortgage** | Landing on a mortgaged property owned by another player opens a "Buy at Mortgage Price" prompt (pendingPurchase path, purchaseProperty handles it) |
+| **Bankruptcy** | Player with balance < 0 → inactive; properties become `isInactive: true` (neutral tiles, no rent, no purchase); toast shown to bankrupt player and all others |
+| **Win condition** | `checkWinCondition` unchanged; win/loss toasts shown via `useToast` in MonopolyGame |
+| **Header** | Removed Phase badge and Current Player CardContent; header is now a single compact row |
+
+---
+
 ## 🏠 Property Purchase Offers (v1.0.9.8)
 
 When a player lands on a property owned by another player, a **Purchase Offer** panel appears in the board center (alongside or after the rent dialog).

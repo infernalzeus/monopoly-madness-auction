@@ -157,7 +157,7 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({
                 >
                   <span>{property.name}</span>
                   <Badge variant="secondary" className="text-xs">
-                    ₹{(property.currentValue / 1000)}K
+                    ${(property.currentValue / 1000)}K
                   </Badge>
                 </Button>
               ))}

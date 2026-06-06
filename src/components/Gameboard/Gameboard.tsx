@@ -128,7 +128,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                                     textAnchor="middle"
                                     className="pointer-events-none"
                                 >
-                                    ₹{(property.baseValue / 1000)}K
+                                    ${(property.baseValue / 1000)}K
                                 </text>
                             )}
 

@@ -86,7 +86,7 @@ export const movePlayer = (state: GameState, spaces: number): GameState => {
   const movingPlayerBefore = state.players.find(p => p.id === state.currentPlayer)!;
   const newPositionCalc = (movingPlayerBefore.position + spaces) % 40;
   const passedGo = movingPlayerBefore.position + spaces >= 40;
-  // 10% of current cash, rounded to nearest ₹1,000, minimum = flat passGoReward
+  // 10% of current cash, rounded to nearest $1,000, minimum = flat passGoReward
   const passGoBonus = passedGo
     ? Math.max(Math.round(movingPlayerBefore.balance * 0.10 / 1000) * 1000, state.settings.passGoReward)
     : 0;
@@ -114,7 +114,7 @@ export const movePlayer = (state: GameState, spaces: number): GameState => {
   const movingPlayer = players.find(p => p.id === state.currentPlayer)!;
   const landedProperty = state.properties.find(p => p.position === movingPlayer.position);
   const isBuyable = landedProperty && ['property', 'railroad', 'utility'].includes(landedProperty.type);
-  const shouldOfferPurchase = Boolean(isBuyable && landedProperty && !landedProperty.isOwned);
+  const shouldOfferPurchase = Boolean(isBuyable && landedProperty && !landedProperty.isOwned && !landedProperty.isInactive);
 
   // Worker auto-build: every time the current player passes GO, each assigned worker builds one house/hotel
   let propertiesAfterWorkers = state.properties;
@@ -147,11 +147,11 @@ export const movePlayer = (state: GameState, spaces: number): GameState => {
 
   if (passedGo && passGoBonus > 0) {
     nextState = addEvent(nextState, 'passGo', movingPlayer.name,
-      `passed GO! Earned 10% income: +₹${passGoBonus.toLocaleString()}`, passGoBonus);
+      `passed GO! Earned 10% income: +$${passGoBonus.toLocaleString()}`, passGoBonus);
   }
 
-  // Check rent — jailed owners cannot collect rent
-  if (isBuyable && landedProperty && landedProperty.isOwned && landedProperty.owner !== movingPlayer.name && !landedProperty.isMortgaged) {
+  // Check rent — jailed owners and inactive properties cannot collect rent
+  if (isBuyable && landedProperty && landedProperty.isOwned && !landedProperty.isInactive && landedProperty.owner !== movingPlayer.name && !landedProperty.isMortgaged) {
     const ownerPlayer = state.players.find(p => p.name === landedProperty.owner);
     if (!ownerPlayer?.isInJail) {
       const rentAmount = computeRent(state.properties, landedProperty, state.lastDiceRoll?.total || 0);
@@ -163,6 +163,21 @@ export const movePlayer = (state: GameState, spaces: number): GameState => {
         };
       }
     }
+  }
+
+  // Mortgaged property owned by another active player — offer to buy it at mortgage price
+  if (
+    isBuyable &&
+    landedProperty?.isOwned &&
+    !landedProperty.isInactive &&
+    landedProperty.isMortgaged &&
+    landedProperty.owner !== movingPlayer.name
+  ) {
+    nextState = {
+      ...nextState,
+      turnState: 'waiting_for_action',
+      pendingPurchase: { propertyId: landedProperty.id, playerId: state.currentPlayer }
+    };
   }
 
   // Chance / Community Chest — income-based reward or penalty
@@ -199,7 +214,7 @@ export const movePlayer = (state: GameState, spaces: number): GameState => {
     const taxAmount = Math.round((totalFinance * 0.1) / 100) * 100; // 10% rounded to nearest 100
 
     nextState = applyPayment(nextState, state.currentPlayer, null, taxAmount, 'Tax Payment');
-    nextState = addEvent(nextState, 'tax', movingPlayer.name, `paid ₹${taxAmount.toLocaleString()} in ${landedProperty.name}`, -taxAmount);
+    nextState = addEvent(nextState, 'tax', movingPlayer.name, `paid $${taxAmount.toLocaleString()} in ${landedProperty.name}`, -taxAmount);
     nextState = { ...nextState, turnState: 'completed' };
   }
 
@@ -266,19 +281,18 @@ export const applyPayment = (state: GameState, fromId: string, toPlayerName: str
     }
   }
 
-  // Bankruptcy
+  // Bankruptcy — mark player inactive; their properties become neutral inactive tiles
   let nextState = { ...state, players };
   if (players[payerIdx].balance < 0) {
     players[payerIdx] = { ...players[payerIdx], isActive: false };
-    const transferredProps = state.properties.map(prop => {
-      if (prop.owner === players[payerIdx].name) {
-        if (toPlayerName) return { ...prop, owner: toPlayerName };
-        return { ...prop, owner: null, isOwned: false, isMortgaged: false, houses: 0, hasHotel: false };
-      }
-      return prop;
-    });
-    nextState = { ...nextState, properties: transferredProps };
+    const bankruptName = players[payerIdx].name;
+    const inactiveProps = state.properties.map(prop =>
+      prop.owner === bankruptName
+        ? { ...prop, isInactive: true, isMortgaged: false }
+        : prop
+    );
+    nextState = { ...nextState, players, properties: inactiveProps };
   }
-  
+
   return checkWinCondition(nextState);
 };

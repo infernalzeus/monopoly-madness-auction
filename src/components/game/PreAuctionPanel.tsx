@@ -100,7 +100,7 @@ const PreAuctionPanel: React.FC<PreAuctionPanelProps> = ({
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
                   <span className="text-muted-foreground">Base Value:</span>
-                  <span className="ml-2 font-semibold">₹{currentAuction.property.baseValue.toLocaleString()}</span>
+                  <span className="ml-2 font-semibold">${currentAuction.property.baseValue.toLocaleString()}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Type:</span>
@@ -120,7 +120,7 @@ const PreAuctionPanel: React.FC<PreAuctionPanelProps> = ({
             {/* Current Bid */}
             <div className="text-center">
               <div className="text-3xl font-bold text-primary mb-1">
-                ₹{currentAuction.currentBid.toLocaleString()}
+                ${currentAuction.currentBid.toLocaleString()}
               </div>
               {currentAuction.highestBidder && (
                 <p className="text-sm text-muted-foreground">
@@ -162,7 +162,7 @@ const PreAuctionPanel: React.FC<PreAuctionPanelProps> = ({
                     onClick={() => setBidAmount(amount.toString())}
                     className="text-xs"
                   >
-                    ₹{(amount / 1000)}K
+                    ${(amount / 1000)}K
                   </Button>
                 ))}
               </div>
@@ -181,7 +181,7 @@ const PreAuctionPanel: React.FC<PreAuctionPanelProps> = ({
                       <span className={bid.player === currentPlayer ? 'text-primary font-semibold' : 'text-foreground'}>
                         {bid.player}
                       </span>
-                      <span className="font-mono">₹{bid.amount.toLocaleString()}</span>
+                      <span className="font-mono">${bid.amount.toLocaleString()}</span>
                     </div>
                   ))}
                 </div>
@@ -203,7 +203,7 @@ const PreAuctionPanel: React.FC<PreAuctionPanelProps> = ({
                 <div className="bg-background/50 rounded-lg p-4">
                   <div className="font-medium">{remainingAuctions[0].name}</div>
                   <div className="text-sm text-muted-foreground">
-                    Base Value: ₹{remainingAuctions[0].baseValue.toLocaleString()}
+                    Base Value: ${remainingAuctions[0].baseValue.toLocaleString()}
                   </div>
                 </div>
                 <Button onClick={onStartNextAuction} className="w-full">

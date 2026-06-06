@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { Lobby, GameSettings } from '@/types/game';
 import { db } from '@/lib/firebase';
-import { collection, query, onSnapshot, deleteDoc, doc, orderBy, limit } from 'firebase/firestore';
+import { collection, query, onSnapshot, deleteDoc, doc, orderBy, limit, getDoc } from 'firebase/firestore';
 import { useEffect } from 'react';
 
 interface LobbySystemProps {
@@ -50,6 +50,7 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
   const [deleteCooldown, setDeleteCooldown] = useState<number | null>(null);
   const [generatedCode] = useState(() => Math.floor(100000 + Math.random() * 900000).toString());
   const [selectedTokenIdx, setSelectedTokenIdx] = useState(0);
+  const [takenTokenColors, setTakenTokenColors] = useState<string[]>([]);
   const [lobbySettings, setLobbySettings] = useState<GameSettings>({
     gameMode: 'classic',
     auctionsEnabled: false,
@@ -58,9 +59,9 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
     tradingEnabled: false,
     auctionDuration: 120,
     maxPlayers: 4,
-    startingBalance: 1500000,
-    passGoReward: 200000,
-    jailFine: 50000,
+    startingBalance: 10000000,
+    passGoReward: 1000000,
+    jailFine: 500000,
     allowPropertyEditing: false,
     preAuctionProperties: [],
     customPropertyLists: {},
@@ -90,10 +91,14 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
         const gamePhase = data.gameState?.gamePhase;
         const isPrivate = data.gameState?.settings?.isPrivate;
 
-        // A game is active for lobby display if it hasn't ended and was updated recently
+        // A game is active for lobby display if it hasn't ended.
+        // 'waiting' lobbies always show (so joining players can find them).
+        // 'playing' games show while recently heartbeated.
         const isActuallyEnded = status === 'ended' || gamePhase === 'ended';
-        const isActiveForLobby = !isActuallyEnded && lastUpdated > hideThreshold;
-        
+        const isActiveForLobby = !isActuallyEnded && (
+          status === 'waiting' || lastUpdated > hideThreshold
+        );
+
         if (isActiveForLobby && !isPrivate) {
           visibleGames.push({ id: docSnap.id, ...data });
         }
@@ -145,6 +150,22 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
     return () => unsubscribe();
   }, []);
 
+  // Fetch taken token colors when a 6-digit join code is entered
+  useEffect(() => {
+    if (joinCode.length !== 6) { setTakenTokenColors([]); return; }
+    getDoc(doc(db, 'games', joinCode)).then(snap => {
+      if (snap.exists()) {
+        const taken = ((snap.data() as any)?.gameState?.players || []).map((p: any) => p.color as string);
+        setTakenTokenColors(taken);
+        // Auto-select first available token
+        const firstFree = tokenOptions.findIndex(t => !taken.includes(t.color));
+        if (firstFree !== -1 && taken.includes(tokenOptions[selectedTokenIdx]?.color)) {
+          setSelectedTokenIdx(firstFree);
+        }
+      }
+    });
+  }, [joinCode]);
+
   const handleDeleteGame = async (gameId: string, hostName: string, status: string, lastUpdated: number) => {
     // Check cooldown
     if (deleteCooldown !== null) {
@@ -193,14 +214,32 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
       <div className="w-full max-w-4xl">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-5xl sm:text-6xl font-bold text-white mb-4 flex items-center justify-center gap-4">
+          <h1 className="text-5xl sm:text-6xl font-bold text-white mb-3 flex items-center justify-center gap-4">
             <img src="/favicon.svg" alt="Monopoly Madness Icon" className="w-16 h-16 sm:w-20 sm:h-20 animate-pulse" />
             Monopoly Madness
           </h1>
-          <p className="text-xl text-cyan-200 mb-2">
-            Create or join a lobby to start your auction adventure!
+          <p className="text-xl text-cyan-200 mb-1 font-semibold">
+            Buy. Bid. Build. Dominate the global property market.
           </p>
-          <p className="text-xs text-cyan-400/50 mb-8 font-mono tracking-wider">v1.0.9.7</p>
+          <p className="text-sm text-cyan-400/70 mb-5">
+            Trade international landmarks, outbid rivals, and be the last millionaire standing.
+          </p>
+          <p className="text-xs text-cyan-400/40 font-mono tracking-wider mb-6">v1.0.9.8</p>
+          {/* Feature highlight pills */}
+          <div className="flex flex-wrap justify-center gap-2 mb-2">
+            {[
+              { icon: '🌍', text: 'Global Cities' },
+              { icon: '🔨', text: 'Live Auctions' },
+              { icon: '🤝', text: 'Trading' },
+              { icon: '👷', text: 'Workers Mode' },
+              { icon: '🏦', text: 'Mortgage System' },
+              { icon: '🤖', text: 'vs Bot Noob' },
+            ].map(f => (
+              <span key={f.text} className="bg-white/10 border border-white/20 text-white/80 text-xs px-3 py-1 rounded-full flex items-center gap-1.5">
+                {f.icon} {f.text}
+              </span>
+            ))}
+          </div>
         </div>
 
         {/* Main Options */}
@@ -318,19 +357,26 @@ const LobbySystem: React.FC<LobbySystemProps> = ({ onCreateLobby, onJoinLobby })
                   <div className="mt-3">
                     <Label className="text-green-200 font-semibold text-sm mb-2 block">Token Color</Label>
                     <div className="flex gap-2 flex-wrap">
-                      {tokenOptions.map((opt, idx) => (
-                        <button
-                          key={opt.color}
-                          type="button"
-                          title={opt.label}
-                          onClick={() => setSelectedTokenIdx(idx)}
-                          className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-base transition-transform hover:scale-110 ${selectedTokenIdx === idx ? 'border-white scale-110' : 'border-transparent opacity-60'}`}
-                          style={{ backgroundColor: opt.color }}
-                        >
-                          <span style={{ fontSize: '0.8rem' }}>{opt.icon}</span>
-                        </button>
-                      ))}
+                      {tokenOptions.map((opt, idx) => {
+                        const isTaken = takenTokenColors.includes(opt.color);
+                        return (
+                          <button
+                            key={opt.color}
+                            type="button"
+                            title={isTaken ? `${opt.label} — taken` : opt.label}
+                            disabled={isTaken}
+                            onClick={() => !isTaken && setSelectedTokenIdx(idx)}
+                            className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-base transition-transform ${isTaken ? 'opacity-25 cursor-not-allowed' : 'hover:scale-110 cursor-pointer'} ${selectedTokenIdx === idx && !isTaken ? 'border-white scale-110' : 'border-transparent opacity-60'}`}
+                            style={{ backgroundColor: opt.color }}
+                          >
+                            {isTaken ? <span className="text-[0.55rem] font-black text-white">✕</span> : <span style={{ fontSize: '0.8rem' }}>{opt.icon}</span>}
+                          </button>
+                        );
+                      })}
                     </div>
+                    {takenTokenColors.length > 0 && (
+                      <p className="text-xs text-slate-400 mt-1">Crossed tokens are already taken in this lobby.</p>
+                    )}
                   </div>
                 </div>
               </div>

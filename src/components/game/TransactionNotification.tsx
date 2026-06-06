@@ -86,7 +86,7 @@ const TransactionNotification: React.FC<TransactionNotificationProps> = ({
                     <div className={`text-xs font-bold mt-1 ${
                       event.amount > 0 ? 'text-green-700' : 'text-red-700'
                     }`}>
-                      {event.amount > 0 ? '+' : ''}₹{Math.abs(event.amount).toLocaleString()}
+                      {event.amount > 0 ? '+' : ''}${Math.abs(event.amount).toLocaleString()}
                     </div>
                   )}
                 </div>

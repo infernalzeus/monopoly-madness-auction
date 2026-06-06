@@ -116,7 +116,7 @@ const CentralDisplay: React.FC<CentralDisplayProps> = ({
     if (amount === undefined) return '';
     const sign = amount >= 0 ? '+' : '';
     const formatted = Math.abs(amount).toLocaleString();
-    return `${sign}₹${formatted}`;
+    return `${sign}$${formatted}`;
   };
 
   // Update display text when current event changes

@@ -61,6 +61,31 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
         </CardHeader>
         <CardContent className="space-y-4">
           {pendingPurchase ? (
+            pendingPurchase.property.isMortgaged ? (
+              /* Mortgaged property buyout */
+              <div className="space-y-3 p-4 bg-amber-900/20 border-2 border-amber-500/30 rounded-lg">
+                <div className="text-center">
+                  <h3 className="text-lg font-bold text-amber-400 mb-1">🏚️ Mortgaged Property</h3>
+                  <p className="text-xs text-amber-500/80">Buy this from its owner at the mortgage price.</p>
+                </div>
+                <div className="bg-slate-900 rounded-lg p-3 border border-amber-700/50 space-y-1.5 text-sm">
+                  <div className="text-center font-bold text-amber-300 text-lg">{pendingPurchase.property.name}</div>
+                  <div className="text-center text-xs text-amber-600">Owner: {pendingPurchase.property.owner}</div>
+                  <div className="text-center text-3xl font-bold text-amber-400 py-1">
+                    ${(pendingPurchase.property.mortgageValue || Math.round(pendingPurchase.property.currentValue * 0.5)).toLocaleString()}
+                  </div>
+                  <div className="text-center text-xs text-amber-600">Mortgage price (owner collects this)</div>
+                </div>
+                {pendingPurchase.isMine === false ? (
+                  <div className="text-center text-sm text-amber-500 italic font-semibold">Waiting for player to decide...</div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button onClick={onBuyNow} className="bg-amber-600 hover:bg-amber-700 text-white font-bold">🤝 Buy Now</Button>
+                    <Button variant="outline" onClick={onSkipPurchase} className="border-slate-500/50 text-slate-300 hover:bg-slate-800">⏭️ Pass</Button>
+                  </div>
+                )}
+              </div>
+            ) : (
             <div className="space-y-4 p-4 bg-emerald-900/20 border-2 border-emerald-500/30 rounded-lg">
               <div className="text-center">
                 <h3 className="text-lg font-bold text-emerald-400 mb-2">🏠 Property Available!</h3>
@@ -74,7 +99,7 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
 
                 <div className="text-center mb-4">
                   <div className="text-3xl font-bold text-emerald-400">
-                    ₹{pendingPurchase.property.currentValue.toLocaleString()}
+                    ${pendingPurchase.property.currentValue.toLocaleString()}
                   </div>
                 </div>
 
@@ -98,7 +123,7 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
                         value={auctionStartingBid}
                         onChange={(e) => setAuctionStartingBid(e.target.value)}
                         className="bg-slate-800 border-sky-400/50 text-sky-100 mb-2"
-                        placeholder={`Min. 70% = ₹${Math.round(pendingPurchase.property.currentValue * 0.7).toLocaleString()}`}
+                        placeholder={`Min. 70% = $${Math.round(pendingPurchase.property.currentValue * 0.7).toLocaleString()}`}
                       />
                       <div className="flex gap-2">
                         {[0.7, 0.85, 1.0].map(pct => (
@@ -168,6 +193,7 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
                 )}
               </div>
             </div>
+            ) /* end non-mortgaged branch */
           ) : (
             <p className="text-muted-foreground text-center py-2">No active auction</p>
           )}
@@ -272,7 +298,7 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
           <div className="grid grid-cols-2 gap-2 text-sm">
             <div>
               <span className="text-muted-foreground">Base Value:</span>
-              <span className="ml-2 font-semibold">₹{property.baseValue.toLocaleString()}</span>
+              <span className="ml-2 font-semibold">${property.baseValue.toLocaleString()}</span>
             </div>
             <div>
               <span className="text-muted-foreground">Type:</span>
@@ -295,7 +321,7 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
         {/* Current bid info */}
         <div className="text-center">
           <div className="text-2xl font-bold text-primary mb-1">
-            ₹{currentBid.toLocaleString()}
+            ${currentBid.toLocaleString()}
           </div>
           {highestBidder ? (
             <p className="text-sm text-muted-foreground">
@@ -318,7 +344,7 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
                 className={`w-full text-sm font-bold text-white ${highestBidder ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-600 hover:bg-slate-700'}`}
               >
                 {highestBidder
-                  ? `✅ Collect ₹${currentBid.toLocaleString()} from ${highestBidder}`
+                  ? `✅ Collect $${currentBid.toLocaleString()} from ${highestBidder}`
                   : '⏭️ End Auction (no bids — turn passes)'}
               </Button>
             )}
@@ -328,7 +354,7 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
             <div className="flex gap-2">
               <Input
                 type="number"
-                placeholder={`Min: ₹${minBid.toLocaleString()}`}
+                placeholder={`Min: $${minBid.toLocaleString()}`}
                 value={bidAmount}
                 onChange={(e) => setBidAmount(e.target.value)}
                 className="flex-1"
@@ -351,7 +377,7 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
                   onClick={() => setBidAmount(amount.toString())}
                   className="text-xs"
                 >
-                  ₹{(amount / 1000)}K
+                  ${(amount / 1000)}K
                 </Button>
               ))}
             </div>
@@ -373,7 +399,7 @@ const AuctionPanel: React.FC<AuctionPanelProps> = ({
                 <span className={bid.player === currentPlayer ? 'text-primary font-semibold' : 'text-foreground'}>
                   {bid.player === currentPlayer ? 'You' : bid.player}
                 </span>
-                <span className="font-mono">₹{bid.amount.toLocaleString()}</span>
+                <span className="font-mono">${bid.amount.toLocaleString()}</span>
               </div>
             ))}
             {bids.length === 0 && (

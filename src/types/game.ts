@@ -15,6 +15,7 @@ export interface Property {
   isOwned: boolean;
   isMortgaged: boolean;
   isInAuction: boolean;
+  isInactive?: boolean; // Set when owning player goes bankrupt — neutral tile, no rent or purchase
   position: number; // 0-39 for board positions
   description?: string;
 }
