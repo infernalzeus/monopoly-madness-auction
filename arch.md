@@ -1,6 +1,6 @@
 # 🎲 Monopoly Madness Auction - Application Architecture & Developer Manual
 
-> **Current Version: `v1.0.9.8`**  
+> **Current Version: `v1.1.1`**  
 > Version is displayed on the lobby start screen (`LobbySystem.tsx` header) and used as the prefix for all git commit summaries.  
 > Format: `v<major>.<minor>.<patch>.<build>` — increment build on each fix, patch on each feature set, minor on design overhauls.
 
@@ -557,6 +557,23 @@ In `movePlayer()` (`core.ts`), when `passedGo && settings.workersEnabled`:
 - **👷 Workers** button in the game header (shown when `workersEnabled`).
 - **Worker Assignment Panel** (Dialog): lists owned properties, color picker (black → `#FFE5B4` → white gradient + custom input), Assign / Recolor / Remove buttons.
 - **WorkerFace** component (`MonopolyBoardLayout.tsx`): a tiny rounded face with blinking eyes rendered beside the property name. Uses `useEffect` for random blink timing. No other facial features.
+
+---
+
+## 🎲 v1.1.1 — Animations, Panel Overhaul & Bug Fixes
+
+### Summary of all changes in this version
+
+| Area | Change |
+|---|---|
+| **Version** | Bumped to v1.1.1 across lobby byline, rules footer, and arch.md |
+| **Dice animation** | `CentralDisplay.tsx` — spinning dot-face dice cycle at 80ms when `isRolling`; snap to actual result on land. `DieFace` SVG-dot component shows accurate pip layout for each value. Dice display is always visible once a roll has happened (even when the property action overlay covers the board centre). |
+| **Token hop animation** | `MonopolyBoardLayout.tsx` — tokens step tile-by-tile at 333 ms/tile (3 tiles/sec). `displayPositions` ref tracks visual position; teleports (>12 tiles, e.g. Go to Jail) snap instantly. `isMoving` drives the existing `animate-bounce` on `AnimatedToken`. |
+| **Toast auto-dismiss** | `TransactionNotification.tsx` — events auto-hide after **3 seconds** (was 10 s); close button now correctly removes the card via local `dismissedIds` state. Toast repositioned to `top-16` so it doesn't overlap the game header. |
+| **Continue button fix** | `resolveCard` in `useGameLogic.ts` — null-pendingCard fallback now forcibly unblocks the turn (`advanceTurnLogic`). Guards use `?? 0` on `amount` to handle Firestore serialisation of zero. Local `cardResolved` flag in `MonopolyGame.tsx` instantly hides the dialog when clicked, giving responsive UI while the async Firestore transaction settles. |
+| **Turn notification** | `MonopolyGame.tsx` — Web Audio API plays a 3-note ascending chord (C6→E6→G6) when it becomes the local player's turn; `document.title` switches to "🎲 It's YOUR Turn! — Monopoly Madness" and resets to "Monopoly Madness" otherwise. |
+| **Player panel** | `PlayerPanel.tsx` — complete rehaul: properties displayed **2-per-row mini tiles** grouped by colour. Each tile expands inline to show full rent tier table, house/hotel costs, mortgage value, and Mortgage/Unmortgage button. Colour groups are **drag-to-reorder** via HTML5 drag API (the `colorOrder` state persists for the session). |
+| **Metadata** | `index.html` — removed Loveable OG image/twitter handle; set proper `og:title`, `og:description`, and `twitter` tags for Monopoly Madness. Tab `<title>` = "Monopoly Madness". |
 
 ---
 

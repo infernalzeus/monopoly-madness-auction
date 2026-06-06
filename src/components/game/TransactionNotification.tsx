@@ -20,7 +20,7 @@ const TransactionNotification: React.FC<TransactionNotificationProps> = ({
     const now = Date.now();
     events.forEach(event => {
       if (timerRef.current.has(event.id)) return;
-      const remaining = 10000 - (now - event.timestamp);
+      const remaining = 3000 - (now - event.timestamp);
       if (remaining <= 0) {
         setDismissedIds(prev => new Set([...prev, event.id]));
         return;

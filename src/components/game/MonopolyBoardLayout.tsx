@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Property, Player, GameEvent, DiceRoll, Worker } from '@/types/game';
@@ -93,25 +93,73 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
   turnTimerDuration = 0,
   workers = []
 }) => {
-  const [playerPositions, setPlayerPositions] = useState<Record<string, number>>({});
+  // displayPositions: visual position of each token (may lag behind actual position during hop anim)
+  const [displayPositions, setDisplayPositions] = useState<Record<string, number>>({});
   const [isMoving, setIsMoving] = useState<Record<string, boolean>>({});
 
+  // Track actual positions across renders to detect changes
+  const prevPosRef = useRef<Record<string, number>>({});
+  // Keep scheduled timers so we can cancel on unmount or re-trigger
+  const hopTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // Stable key built from each player's actual position — only recompute when positions change
+  const posKey = players.map(p => `${p.id}:${p.position}`).join('|');
+
   useEffect(() => {
+    // Cancel any in-flight hop animations
+    hopTimers.current.forEach(t => clearTimeout(t));
+    hopTimers.current = [];
+
     players.forEach(player => {
-      // Use functional update to get current state without adding it to dependencies
-      setPlayerPositions(currentPositions => {
-        const previousPosition = currentPositions[player.id];
-        if (previousPosition !== undefined && previousPosition !== player.position) {
-          setIsMoving(prev => ({ ...prev, [player.id]: true }));
-          setTimeout(() => setIsMoving(prev => ({ ...prev, [player.id]: false })), 1500);
-        }
-        if (previousPosition !== player.position) {
-          return { ...currentPositions, [player.id]: player.position };
-        }
-        return currentPositions;
-      });
+      const prev = prevPosRef.current[player.id];
+      const next = player.position;
+
+      if (prev === undefined) {
+        // First time: place token immediately
+        prevPosRef.current[player.id] = next;
+        setDisplayPositions(d => ({ ...d, [player.id]: next }));
+        return;
+      }
+      if (prev === next) return; // No change
+
+      prevPosRef.current[player.id] = next;
+
+      // Steps going forward around the board (wraps at 40)
+      const steps = (next - prev + 40) % 40;
+
+      // For teleports (Go to Jail, etc.) — > 12 steps — snap directly
+      if (steps === 0 || steps > 12) {
+        setDisplayPositions(d => ({ ...d, [player.id]: next }));
+        setIsMoving(m => ({ ...m, [player.id]: true }));
+        const t = setTimeout(() => setIsMoving(m => ({ ...m, [player.id]: false })), 400);
+        hopTimers.current.push(t);
+        return;
+      }
+
+      // Hop one tile at a time — 3 tiles per second (333ms each)
+      const MS_PER_TILE = 333;
+      for (let i = 1; i <= steps; i++) {
+        const stepPos = (prev + i) % 40;
+        const delay = i * MS_PER_TILE;
+
+        const t1 = setTimeout(() => {
+          setDisplayPositions(d => ({ ...d, [player.id]: stepPos }));
+          setIsMoving(m => ({ ...m, [player.id]: true }));
+        }, delay);
+
+        const t2 = setTimeout(() => {
+          setIsMoving(m => ({ ...m, [player.id]: false }));
+        }, delay + 220); // brief hop lasts 220ms per tile
+
+        hopTimers.current.push(t1, t2);
+      }
     });
-  }, [players]); 
+
+    return () => {
+      hopTimers.current.forEach(t => clearTimeout(t));
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [posKey]);
 
   // Named property group → hex colour mapping
   const colorGroupHex: Record<string, string> = {
@@ -132,7 +180,9 @@ const MonopolyBoardLayout: React.FC<MonopolyBoardLayoutProps> = ({
     return colorGroupHex[colorGroup] || null;
   };
 
-  const getPlayersAtPosition = (position: number) => players.filter(p => p.position === position);
+  // Use display position (animated) instead of actual position
+  const getPlayersAtPosition = (position: number) =>
+    players.filter(p => (displayPositions[p.id] ?? p.position) === position);
   const getPropertyByPosition = (position: number) => properties.find(p => p.position === position);
 
   const getGridPosition = (position: number) => {

@@ -56,6 +56,8 @@ const MonopolyGame: React.FC = () => {
   const [showRules, setShowRules] = useState(false);
   const [selectedSpecialProperty, setSelectedSpecialProperty] = useState<Property | null>(null);
   const [offerDismissed, setOfferDismissed] = useState(false);
+  // Local flag to immediately hide the card dialog on click (Firestore update is async)
+  const [cardResolved, setCardResolved] = useState(false);
   const { toast } = useToast();
   
   const {
@@ -214,6 +216,43 @@ const MonopolyGame: React.FC = () => {
     }
   }, [gameState.winnerId]);
 
+  // Turn notification — ding sound + tab title when it becomes the local player's turn
+  const prevIsMyTurn = React.useRef(false);
+  useEffect(() => {
+    const wasMyTurn = prevIsMyTurn.current;
+    prevIsMyTurn.current = isMyTurn;
+
+    if (!wasMyTurn && isMyTurn && gameState.gamePhase === 'playing') {
+      // Ding sound via Web Audio API
+      try {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1046, ctx.currentTime);          // C6
+        osc.frequency.setValueAtTime(1318, ctx.currentTime + 0.12);   // E6
+        osc.frequency.setValueAtTime(1567, ctx.currentTime + 0.24);   // G6
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.7);
+        setTimeout(() => ctx.close(), 1000);
+      } catch (_) {}
+
+      document.title = "🎲 It's YOUR Turn! — Monopoly Madness";
+    } else if (!isMyTurn && gameState.gamePhase === 'playing') {
+      document.title = 'Monopoly Madness';
+    }
+  }, [isMyTurn, gameState.gamePhase]);
+
+  // Reset tab title when game ends or on unmount
+  useEffect(() => {
+    return () => { document.title = 'Monopoly Madness'; };
+  }, []);
+
   // Loss toast — fires when a player goes inactive (bankrupt)
   const prevActivePlayers = React.useRef<Set<string>>(new Set());
   useEffect(() => {
@@ -327,8 +366,11 @@ const MonopolyGame: React.FC = () => {
   const showJailDialog = isMyTurn && myPlayer.isInJail && gameState.turnState === 'waiting_for_roll' && gameState.gamePhase === 'playing';
   const { fine: jailFine, income: jailIncome } = showJailDialog ? getJailFineAmount() : { fine: 0, income: 0 };
 
-  // Pending card dialog
-  const myPendingCard = gameState.pendingCard && gameState.currentPlayer === localPlayerId ? gameState.pendingCard : null;
+  // Pending card dialog — also suppressed locally once resolved (Firestore update is async)
+  const myPendingCard = gameState.pendingCard && gameState.currentPlayer === localPlayerId && !cardResolved
+    ? gameState.pendingCard : null;
+  // Reset cardResolved when the current player or pendingCard changes
+  React.useEffect(() => { setCardResolved(false); }, [gameState.currentPlayer, gameState.pendingCard]);
 
   // Offer panel: only shown on MY turn, after rolling (not while waiting to roll), and when I'm standing
   // on a property owned by someone else. Reset dismissed state when my position changes.
@@ -757,10 +799,10 @@ const MonopolyGame: React.FC = () => {
                         <p className="text-slate-400 text-sm">No properties — no reward or penalty this time.</p>
                       )}
                       <button
-                        onClick={resolveCard}
+                        onClick={() => { setCardResolved(true); resolveCard(); }}
                         className={`w-full font-bold py-2 px-4 rounded-lg text-sm transition-colors text-white ${myPendingCard.isReward ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-red-700 hover:bg-red-800'}`}
                       >
-                        {myPendingCard.amount > 0 ? (myPendingCard.isReward ? `Collect $${myPendingCard.amount.toLocaleString('en-US')}` : `Pay $${myPendingCard.amount.toLocaleString('en-US')}`) : 'Continue'}
+                        {(myPendingCard.amount ?? 0) > 0 ? (myPendingCard.isReward ? `Collect $${(myPendingCard.amount ?? 0).toLocaleString('en-US')}` : `Pay $${(myPendingCard.amount ?? 0).toLocaleString('en-US')}`) : 'Continue'}
                       </button>
                     </div>
                   ) : myPendingRentData ? (

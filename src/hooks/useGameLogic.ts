@@ -1280,13 +1280,24 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
     return { fine: Math.round(income * 0.20), income };
   }, [gameState.currentPlayer, gameState.players, gameState.properties]);
 
-  // Resolve pending card — single atomic setGameState to avoid race conditions
+  // Resolve pending card — always advances the turn regardless of card outcome
   const resolveCard = useCallback(() => {
     setGameState(prev => {
       const pc = prev.pendingCard;
-      if (!pc) return prev;
+
+      // Fallback: if pendingCard is gone (race condition) but we're still blocked, unblock the turn
+      if (!pc) {
+        if (prev.turnState === 'waiting_for_action' || prev.turnState === 'processing') {
+          return advanceTurnLogic({ ...prev, pendingCard: null });
+        }
+        return prev;
+      }
+
       const cp = prev.players.find(p => p.id === prev.currentPlayer);
-      if (!cp) return prev;
+      // Fallback: current player not found — still unblock
+      if (!cp) {
+        return advanceTurnLogic({ ...prev, pendingCard: null });
+      }
 
       const cardLabel = pc.type === 'chance' ? 'Chance' : 'Community Chest';
       const rollLabel = `roll ${pc.diceRoll} — ${pc.diceRoll % 2 !== 0 ? 'odd' : 'even'}`;
@@ -1295,22 +1306,24 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
         id: `event-${Date.now()}-${Math.random()}`,
         type: 'card',
         player: cp.name,
-        message: pc.amount > 0
-          ? `${cardLabel} (${rollLabel}): ${pc.isReward ? '+' : '-'}$${pc.amount.toLocaleString('en-US')} from ${pc.numProperties} prop${pc.numProperties !== 1 ? 's' : ''}`
+        message: (pc.amount ?? 0) > 0
+          ? `${cardLabel} (${rollLabel}): ${pc.isReward ? '+' : '-'}$${(pc.amount ?? 0).toLocaleString('en-US')} from ${pc.numProperties} prop${pc.numProperties !== 1 ? 's' : ''}`
           : `${cardLabel} (${rollLabel}): No properties — no change`,
         timestamp: Date.now(),
-        amount: pc.amount > 0 ? (pc.isReward ? pc.amount : -pc.amount) : undefined
+        amount: (pc.amount ?? 0) > 0 ? (pc.isReward ? pc.amount : -(pc.amount ?? 0)) : undefined
       };
 
-      const baseNext = { ...prev, pendingCard: null, gameEvents: [...prev.gameEvents.slice(-19), event] };
+      const baseNext = { ...prev, pendingCard: null, gameEvents: [...prev.gameEvents.slice(-19), event as GameEvent] };
 
-      if (pc.amount <= 0) {
+      // No income — skip balance change, advance immediately
+      if ((pc.amount ?? 0) <= 0) {
         return advanceTurnLogic(baseNext);
       }
 
-      let players = prev.players.map(p => {
+      const players = prev.players.map(p => {
         if (p.id !== prev.currentPlayer) return p;
-        return { ...p, balance: p.balance + (pc.isReward ? pc.amount : -pc.amount) };
+        const delta = pc.isReward ? (pc.amount ?? 0) : -(pc.amount ?? 0);
+        return { ...p, balance: p.balance + delta };
       });
 
       return advanceTurnLogic({ ...baseNext, players });
