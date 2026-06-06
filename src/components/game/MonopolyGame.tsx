@@ -111,6 +111,8 @@ const MonopolyGame: React.FC = () => {
 
   const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayer);
   const myPlayer = gameState.players.find(p => p.id === localPlayerId) || currentPlayer;
+  // Hoisted before all hooks so turn-notification effects can depend on it safely
+  const isMyTurn = gameState.currentPlayer === localPlayerId;
 
   useEffect(() => {
     console.log("Game Phase:", gameState.gamePhase);
@@ -284,7 +286,6 @@ const MonopolyGame: React.FC = () => {
     );
   }
 
-  const isMyTurn = gameState.currentPlayer === localPlayerId;
   const myOwnedProperties = gameState.properties.filter(p => p.owner === myPlayer.name);
   const ownedProperties = gameState.properties.filter(p => p.owner === currentPlayer.name);
 
