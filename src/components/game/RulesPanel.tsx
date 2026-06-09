@@ -138,7 +138,7 @@ const RulesPanel: React.FC<RulesPanelProps> = ({ settings, onClose }) => {
           </Section>
 
           <p className="text-xs text-slate-500 text-center pt-2 border-t border-slate-700">
-            Click anywhere outside this panel to close · Monopoly Madness v1.1.1
+            Click anywhere outside this panel to close · Monopoly Madness v1.1.3
           </p>
         </div>
       </div>

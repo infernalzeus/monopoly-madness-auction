@@ -1,6 +1,6 @@
 # 🎲 Monopoly Madness Auction - Application Architecture & Developer Manual
 
-> **Current Version: `v1.1.2`**  
+> **Current Version: `v1.1.3`**  
 > Version is displayed on the lobby start screen (`LobbySystem.tsx` header) and used as the prefix for all git commit summaries.  
 > Format: `v<major>.<minor>.<patch>.<build>` — increment build on each fix, patch on each feature set, minor on design overhauls.
 
@@ -72,7 +72,8 @@ monopoly-madness-auction/
 │   │   ├── Index.tsx              # Mount point for MonopolyGame
 │   │   └── NotFound.tsx           # Fallback route
 │   ├── lib/
-│   │   └── firebase.ts            # Firebase app init & Firestore database instance export
+│   │   ├── firebase.ts            # Firebase app init & Firestore database instance export
+│   │   └── achievements.ts        # Achievement definitions, context builder, localStorage persistence
 │   ├── App.tsx                    # Routing & global providers
 │   ├── main.tsx                   # React DOM render entry
 │   └── index.css                  # Global styles, tailwind configs, animations
@@ -557,6 +558,22 @@ In `movePlayer()` (`core.ts`), when `passedGo && settings.workersEnabled`:
 - **👷 Workers** button in the game header (shown when `workersEnabled`).
 - **Worker Assignment Panel** (Dialog): lists owned properties, color picker (black → `#FFE5B4` → white gradient + custom input), Assign / Recolor / Remove buttons.
 - **WorkerFace** component (`MonopolyBoardLayout.tsx`): a tiny rounded face with blinking eyes rendered beside the property name. Uses `useEffect` for random blink timing. No other facial features.
+
+---
+
+## 🤖 v1.1.3 — Bot AI, Reconnection & Achievements
+
+### Summary of all changes in this version
+
+| Area | Change |
+|---|---|
+| **Version** | Bumped to v1.1.3 across lobby byline, rules footer, and arch.md |
+| **Bot stale closures** | Bot automation in `MonopolyGame.tsx` now stores all called functions (`resolveCard`, `endTurn`, `payRent`, `payJailFine`, `skipJailTurn`, `purchaseProperty`, `skipPurchase`, `rollDiceForBot`, `acceptTradeOffer`, `rejectTradeOffer`) in `useRef` pairs. Timer callbacks call `ref.current()` instead of the captured closure, eliminating stale-function bugs (root cause of bot getting stuck on Chance / Community Chest). |
+| **Bot trade interaction** | Bot Noob now automatically responds to trade offers addressed to it. A `useRef<Set<string>>` tracks already-responded offer IDs. After a 2–4 s human-like delay, the bot accepts if the value it receives is ≥ 85% of the value it gives (or with 25% random goodwill), otherwise rejects. |
+| **Player reconnection** | `handleJoinLobby` now updates a reconnecting player's color and icon in Firestore when they rejoin with the same name but a different token selection, and explicitly sets `isActive: true`. The player ID is correctly restored so all game actions work immediately after reconnection. |
+| **Achievements system** | New `src/lib/achievements.ts` defines 10 milestones (First Step, Landlord, Property Mogul, Millionaire, Cash King, Monopolist, Developer, Hotel Magnate, Deal Maker, Survivor). A `useEffect` in `MonopolyGame.tsx` checks conditions on each meaningful state change and persists unlocked IDs to `localStorage` keyed by player name. Unlocks trigger toast notifications. |
+| **Achievements UI** | Trophy button `🏆 X/10` added to the game header. Clicking opens a dialog listing all achievements with lock/unlock visual states (greyed-out + grayscale when locked). |
+| **Google Play note** | Google Play Games SDK is Android-only; web-based achievement persistence uses `localStorage` in v1.1.3. Firebase Auth + Firestore cloud sync can be layered in a future version using `mm_ach_{playerName}` as the key schema. |
 
 ---
 

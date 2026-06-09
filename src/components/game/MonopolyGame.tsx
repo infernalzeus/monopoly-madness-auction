@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ACHIEVEMENTS, getAchievementContext, loadUnlockedAchievements, saveUnlockedAchievements } from '@/lib/achievements';
 import MonopolyBoardLayout from './MonopolyBoardLayout';
 import CentralDisplay from './CentralDisplay';
 import AuctionPanel from './AuctionPanel';
@@ -56,6 +57,8 @@ const MonopolyGame: React.FC = () => {
   const [showRules, setShowRules] = useState(false);
   const [selectedSpecialProperty, setSelectedSpecialProperty] = useState<Property | null>(null);
   const [offerDismissed, setOfferDismissed] = useState(false);
+  const [showAchievements, setShowAchievements] = useState(false);
+  const [unlockedAchievements, setUnlockedAchievements] = useState<Set<string>>(new Set());
   // Local flag to immediately hide the card dialog on click (Firestore update is async)
   const [cardResolved, setCardResolved] = useState(false);
   const { toast } = useToast();
@@ -130,43 +133,43 @@ const MonopolyGame: React.FC = () => {
 
     if (gameState.turnState === 'waiting_for_roll' && !isRolling) {
       if (activeCp.isInJail) {
-        // Bot: always pay fine if affordable, otherwise skip (no random — avoids getting stuck)
+        const jailBalance = activeCp.balance;
         timer = setTimeout(() => {
           const { fine } = getJailFineAmount();
-          if (fine > 0 && activeCp.balance >= fine) {
-            payJailFine();
+          if (fine > 0 && jailBalance >= fine) {
+            payJailFineRef.current();
           } else {
-            skipJailTurn();
+            skipJailTurnRef.current();
           }
         }, 900);
       } else {
-        timer = setTimeout(() => rollDiceForBot(), 1200);
+        timer = setTimeout(() => rollDiceForBotRef.current(), 1200);
       }
     } else if (gameState.turnState === 'waiting_for_action') {
       if (gameState.pendingCard) {
-        // Always resolve cards immediately for bot
-        timer = setTimeout(() => resolveCard(), 300);
+        timer = setTimeout(() => resolveCardRef.current(), 300);
       } else if (gameState.pendingPurchase) {
+        const pendingPropId = gameState.pendingPurchase.propertyId;
+        const prop = gameState.properties.find(p => p.id === pendingPropId);
+        const canAfford = prop && activeCp.balance >= prop.currentValue;
         timer = setTimeout(() => {
-          const prop = gameState.properties.find(p => p.id === gameState.pendingPurchase!.propertyId);
-          const canAfford = prop && activeCp.balance >= prop.currentValue;
           if (canAfford && Math.random() > 0.4) {
-            purchaseProperty(gameState.pendingPurchase!.propertyId);
+            purchasePropertyRef.current(pendingPropId);
           } else {
-            skipPurchase();
+            skipPurchaseRef.current();
           }
         }, 1200);
       } else if (gameState.pendingRent) {
-        timer = setTimeout(() => payRent(), 700);
+        timer = setTimeout(() => payRentRef.current(), 700);
       } else {
-        // Stuck in waiting_for_action with nothing pending — force advance
-        timer = setTimeout(() => endTurn(), 1200);
+        timer = setTimeout(() => endTurnRef.current(), 1200);
       }
     } else if (gameState.turnState === 'completed') {
-      timer = setTimeout(() => endTurn(), 1200);
+      timer = setTimeout(() => endTurnRef.current(), 1200);
     }
 
     return () => { if (timer) clearTimeout(timer); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     gameState.currentPlayer,
     gameState.turnState,
@@ -174,8 +177,52 @@ const MonopolyGame: React.FC = () => {
     gameState.pendingRent,
     gameState.pendingCard,
     gameState.gamePhase,
-    gameState.players, // include so isInJail changes re-trigger
+    gameState.players,
     isRolling
+  ]);
+
+  // Bot Noob trade responder — accept/reject offers addressed to the bot
+  const botRespondedTradeIds = React.useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const botPlayer = gameState.players.find(p => p.isBot);
+    if (!botPlayer || gameState.gamePhase !== 'playing') return;
+
+    const unhandled = gameState.tradeOffers.filter(
+      o => o.status === 'pending'
+        && o.toPlayer === botPlayer.name
+        && !botRespondedTradeIds.current.has(o.id)
+    );
+    if (unhandled.length === 0) return;
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    unhandled.forEach(offer => {
+      botRespondedTradeIds.current.add(offer.id);
+      const botName = botPlayer.name;
+      // Capture property values now (before async delay)
+      const giveValue = offer.requestedProperties.reduce((sum, id) => {
+        const p = gameState.properties.find(prop => prop.id === id);
+        return sum + (p?.currentValue || 0);
+      }, 0) + offer.requestedCash;
+      const getValue = offer.offeredProperties.reduce((sum, id) => {
+        const p = gameState.properties.find(prop => prop.id === id);
+        return sum + (p?.currentValue || 0);
+      }, 0) + offer.offeredCash;
+
+      timers.push(setTimeout(() => {
+        // Accept if getting >= 85% of value given, or 25% random goodwill
+        if (getValue >= giveValue * 0.85 || Math.random() < 0.25) {
+          acceptTradeOfferRef.current(offer.id, botName);
+        } else {
+          rejectTradeOfferRef.current(offer.id);
+        }
+      }, 2000 + Math.random() * 2000));
+    });
+
+    return () => timers.forEach(clearTimeout);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    gameState.tradeOffers.length,
+    gameState.gamePhase
   ]);
 
   // Bot Noob bids on live auctions (independent of whose turn it is)
@@ -258,6 +305,32 @@ const MonopolyGame: React.FC = () => {
 
   // Loss toast — fires when a player goes inactive (bankrupt)
   const prevActivePlayers = React.useRef<Set<string>>(new Set());
+
+  // Stable refs for bot automation — prevents stale closures in timer callbacks
+  const resolveCardRef = React.useRef(resolveCard);
+  const endTurnRef = React.useRef(endTurn);
+  const payRentRef = React.useRef(payRent);
+  const payJailFineRef = React.useRef(payJailFine);
+  const skipJailTurnRef = React.useRef(skipJailTurn);
+  const purchasePropertyRef = React.useRef(purchaseProperty);
+  const skipPurchaseRef = React.useRef(skipPurchase);
+  const rollDiceForBotRef = React.useRef(rollDiceForBot);
+  const acceptTradeOfferRef = React.useRef(acceptTradeOffer);
+  const rejectTradeOfferRef = React.useRef(rejectTradeOffer);
+  useEffect(() => { resolveCardRef.current = resolveCard; }, [resolveCard]);
+  useEffect(() => { endTurnRef.current = endTurn; }, [endTurn]);
+  useEffect(() => { payRentRef.current = payRent; }, [payRent]);
+  useEffect(() => { payJailFineRef.current = payJailFine; }, [payJailFine]);
+  useEffect(() => { skipJailTurnRef.current = skipJailTurn; }, [skipJailTurn]);
+  useEffect(() => { purchasePropertyRef.current = purchaseProperty; }, [purchaseProperty]);
+  useEffect(() => { skipPurchaseRef.current = skipPurchase; }, [skipPurchase]);
+  useEffect(() => { rollDiceForBotRef.current = rollDiceForBot; }, [rollDiceForBot]);
+  useEffect(() => { acceptTradeOfferRef.current = acceptTradeOffer; }, [acceptTradeOffer]);
+  useEffect(() => { rejectTradeOfferRef.current = rejectTradeOffer; }, [rejectTradeOffer]);
+
+  // Achievement load / check ref
+  const achievementsLoadedRef = React.useRef(false);
+  const unlockedAchRef = React.useRef<Set<string>>(new Set());
   useEffect(() => {
     const currentActiveIds = new Set(gameState.players.filter(p => p.isActive).map(p => p.id));
     gameState.players.forEach(p => {
@@ -274,6 +347,45 @@ const MonopolyGame: React.FC = () => {
 
   // Reset cardResolved whenever the turn changes or pendingCard is cleared by Firestore
   useEffect(() => { setCardResolved(false); }, [gameState.currentPlayer, gameState.pendingCard]);
+
+  // Achievement tracking — checks on meaningful state changes, persists to localStorage
+  const myPlayerForAch = gameState.players.find(p => p.id === localPlayerId);
+  useEffect(() => {
+    if (!myPlayerForAch || gameState.gamePhase !== 'playing') return;
+    if (!achievementsLoadedRef.current) {
+      achievementsLoadedRef.current = true;
+      const loaded = loadUnlockedAchievements(myPlayerForAch.name);
+      unlockedAchRef.current = loaded;
+      setUnlockedAchievements(new Set(loaded));
+      return;
+    }
+    const ctx = getAchievementContext(
+      myPlayerForAch.name,
+      myPlayerForAch.balance,
+      gameState.properties,
+      gameState.tradeOffers,
+      gameState.turn
+    );
+    const newOnes = ACHIEVEMENTS.filter(a => !unlockedAchRef.current.has(a.id) && a.check(ctx));
+    if (newOnes.length > 0) {
+      newOnes.forEach(a => unlockedAchRef.current.add(a.id));
+      saveUnlockedAchievements(myPlayerForAch.name, unlockedAchRef.current);
+      setUnlockedAchievements(new Set(unlockedAchRef.current));
+      newOnes.forEach(ach => toast({
+        title: `${ach.icon} Achievement Unlocked!`,
+        description: `${ach.title} — ${ach.description}`,
+        duration: 5000,
+      }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    myPlayerForAch?.balance,
+    myPlayerForAch?.name,
+    gameState.properties.filter(p => p.owner === myPlayerForAch?.name).length,
+    gameState.tradeOffers.filter(o => o.status === 'accepted').length,
+    gameState.turn,
+    gameState.gamePhase,
+  ]);
 
   if (!currentPlayer || !myPlayer) {
     console.log("Waiting for players...");
@@ -522,7 +634,14 @@ const MonopolyGame: React.FC = () => {
         let joinedPlayerId = '';
         const existingPlayer = state.players.find(p => p.name === playerName);
         if (existingPlayer) {
+          // Reconnect: restore identity, apply any newly-selected token color/icon
           joinedPlayerId = existingPlayer.id;
+          const updatedPlayers = state.players.map(p =>
+            p.id === existingPlayer.id
+              ? { ...p, color: color || p.color, pieceIcon: icon || p.pieceIcon, isActive: true }
+              : p
+          );
+          await setDoc(roomRef, { ...data, gameState: { ...state, players: updatedPlayers }, lastUpdated: Date.now() });
         } else {
           if (state.players.length >= state.settings.maxPlayers) {
             alert('Lobby is currently full!');
@@ -728,6 +847,9 @@ const MonopolyGame: React.FC = () => {
                   👷
                 </Button>
               )}
+              <Button onClick={() => setShowAchievements(true)} className="bg-yellow-700/80 hover:bg-yellow-600 text-white font-bold text-xs h-7 px-2 border border-yellow-500/50" title="Achievements">
+                🏆 {unlockedAchievements.size}/{ACHIEVEMENTS.length}
+              </Button>
               <Button onClick={() => setShowRules(true)} className="bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs h-7 px-2 border border-slate-500/60">
                 📖
               </Button>
@@ -1213,6 +1335,42 @@ const MonopolyGame: React.FC = () => {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Achievements Dialog */}
+      <Dialog open={showAchievements} onOpenChange={setShowAchievements}>
+        <DialogContent className="max-w-md bg-slate-900 border-2 border-yellow-500 text-white max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-yellow-400 flex items-center gap-2">
+              🏆 Achievements <span className="text-base font-normal text-slate-400 ml-1">({unlockedAchievements.size} / {ACHIEVEMENTS.length})</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-2 py-2">
+            {ACHIEVEMENTS.map(ach => {
+              const unlocked = unlockedAchievements.has(ach.id);
+              return (
+                <div
+                  key={ach.id}
+                  className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
+                    unlocked
+                      ? 'border-yellow-500/50 bg-yellow-950/30'
+                      : 'border-slate-700 bg-slate-800/20 opacity-40 grayscale'
+                  }`}
+                >
+                  <span className="text-2xl flex-shrink-0">{ach.icon}</span>
+                  <div className="min-w-0">
+                    <div className="font-bold text-sm text-white">{ach.title}</div>
+                    <div className="text-xs text-slate-400">{ach.description}</div>
+                  </div>
+                  {unlocked && <span className="ml-auto text-yellow-400 text-lg flex-shrink-0">✓</span>}
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-slate-600 text-center pt-2 border-t border-slate-800">
+            Saved locally in your browser · Google Play integration coming soon
+          </p>
+        </DialogContent>
+      </Dialog>
 
       {/* Bottom Drawer: Game Log — z-[200] ensures it renders above player token z-20 tokens */}
       <Drawer open={isLogOpen} onOpenChange={setIsLogOpen}>
