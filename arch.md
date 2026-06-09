@@ -1,6 +1,6 @@
 # 🎲 Monopoly Madness Auction - Application Architecture & Developer Manual
 
-> **Current Version: `v1.1.1`**  
+> **Current Version: `v1.1.2`**  
 > Version is displayed on the lobby start screen (`LobbySystem.tsx` header) and used as the prefix for all git commit summaries.  
 > Format: `v<major>.<minor>.<patch>.<build>` — increment build on each fix, patch on each feature set, minor on design overhauls.
 
@@ -557,6 +557,27 @@ In `movePlayer()` (`core.ts`), when `passedGo && settings.workersEnabled`:
 - **👷 Workers** button in the game header (shown when `workersEnabled`).
 - **Worker Assignment Panel** (Dialog): lists owned properties, color picker (black → `#FFE5B4` → white gradient + custom input), Assign / Recolor / Remove buttons.
 - **WorkerFace** component (`MonopolyBoardLayout.tsx`): a tiny rounded face with blinking eyes rendered beside the property name. Uses `useEffect` for random blink timing. No other facial features.
+
+---
+
+## 🔧 v1.1.2 — Fixes & Trading Overhaul
+
+### Summary of all changes in this version
+
+| Area | Change |
+|---|---|
+| **Version** | Bumped to v1.1.2 |
+| **Turn stuck / delays** | Auto-advance timer now uses a `useRef` for `advanceTurn` so Firestore heartbeat updates no longer reset the 2-second countdown; same fix applied to the turn-timer interval. |
+| **Own-property landing** | `movePlayer` sets `turnState: 'waiting_for_action'` when landing on your own property. Board overlay shows "Build House / Hotel" + "End Turn" buttons (turn timer still applies). |
+| **Trading — both parties** | `TradingSystem` now shows the target player's properties in a "Properties You're Requesting" section once a trading partner is selected. |
+| **Trading — cancel** | Trade creator gets an ✕ button on their pending offer; `cancelTradeOffer` hook function removes the offer from state immediately. |
+| **Trading — timer** | Expiry countdown badge removed from all trade offer cards. |
+| **Players panel** | Overview table below the board is now sorted by net worth (descending, active players first). A "Net Worth" column (cash + property values) was added. |
+| **Rent currency** | `formatCurrency` in `RentPaymentDialog` and `GameOverview` changed from Indian lakh notation (`$1.0L`) to western notation (`$1.00M` / `$500K`). |
+| **Rent monopoly bonus** | `computeRent` now filters to `type === 'property'` tiles and requires all group properties to be un-mortgaged before applying the 2× multiplier (matches stated rules). `GameConsole` now saves `colorGroup` as `null` (not `''`) to preserve monopoly detection. |
+| **Toast auto-dismiss** | Fixed `TransactionNotification` cleanup: the timer `Map` is cleared correctly on each effect run, so events auto-dismiss after 3 s instead of persisting forever. |
+| **Worker costs** | Workers now deduct progressive costs when auto-building: Nth house on a property costs `houseCost × N`. A hotel costs `hotelCost`. Builds are skipped if the player cannot afford them. Manual `buildHouse` also uses the same progressive scaling. |
+| **Worker assignment** | Assign button is disabled when it is not your turn or after you have rolled. A pulsing nudge tooltip appears in the board centre on your pre-roll phase to remind you. |
 
 ---
 

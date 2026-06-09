@@ -15,7 +15,7 @@ const TransactionNotification: React.FC<TransactionNotificationProps> = ({
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const timerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  // Auto-expire events after 10 seconds
+  // Auto-dismiss events after 3 seconds
   useEffect(() => {
     const now = Date.now();
     events.forEach(event => {
@@ -33,7 +33,11 @@ const TransactionNotification: React.FC<TransactionNotificationProps> = ({
     });
 
     return () => {
-      timerRef.current.forEach(t => clearTimeout(t));
+      // Cancel active timers but keep the map intact so we don't re-schedule on next render
+      timerRef.current.forEach((t, id) => {
+        clearTimeout(t);
+        timerRef.current.delete(id);
+      });
     };
   }, [events]);
 

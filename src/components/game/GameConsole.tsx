@@ -59,10 +59,10 @@ const GameConsole: React.FC<GameConsoleProps> = ({
     setEditingProperty({
       name: property.name,
       type: property.type,
-      colorGroup: property.colorGroup || '',
+      colorGroup: property.colorGroup ?? undefined,
       currentValue: property.currentValue,
       baseValue: property.baseValue,
-      rent: property.rent ? [...property.rent] : [0,0,0,0,0,0],
+      rent: property.rent ? [...property.rent] : [0, 0, 0, 0, 0, 0],
       houseCost: property.houseCost || 0,
       hotelCost: property.hotelCost || 0
     });
@@ -70,7 +70,12 @@ const GameConsole: React.FC<GameConsoleProps> = ({
 
   const savePropertyChanges = () => {
     if (selectedProperty && editingProperty) {
-      onUpdateProperty(selectedProperty.id, editingProperty);
+      // Normalise colorGroup: empty string → null (avoids breaking monopoly bonus check)
+      const updates = {
+        ...editingProperty,
+        colorGroup: editingProperty.colorGroup || null
+      };
+      onUpdateProperty(selectedProperty.id, updates as any);
       setSelectedProperty(null);
       setEditingProperty({});
     }

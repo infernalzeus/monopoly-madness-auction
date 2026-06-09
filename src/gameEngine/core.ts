@@ -116,8 +116,10 @@ export const movePlayer = (state: GameState, spaces: number): GameState => {
   const isBuyable = landedProperty && ['property', 'railroad', 'utility'].includes(landedProperty.type);
   const shouldOfferPurchase = Boolean(isBuyable && landedProperty && !landedProperty.isOwned && !landedProperty.isInactive);
 
-  // Worker auto-build: every time the current player passes GO, each assigned worker builds one house/hotel
+  // Worker auto-build: every time the current player passes GO, each assigned worker builds one house/hotel.
+  // Progressive cost: Nth house costs houseCost * N; hotel costs hotelCost.
   let propertiesAfterWorkers = state.properties;
+  let workerBuildDebt = 0;
   if (passedGo && state.settings.workersEnabled && state.workers && state.workers.length > 0) {
     const playerWorkers = state.workers.filter(w => w.ownerId === state.currentPlayer);
     playerWorkers.forEach(worker => {
@@ -127,18 +129,34 @@ export const movePlayer = (state: GameState, spaces: number): GameState => {
         if (prop.isMortgaged || prop.type !== 'property') return prop;
         if (prop.hasHotel) return prop;
         if (!prop.colorGroup) return prop;
-        if (prop.houses < 4) return { ...prop, houses: prop.houses + 1 };
+        if (prop.houses < 4) {
+          const cost = (prop.houseCost || 0) * (prop.houses + 1);
+          if (movingPlayerBefore.balance - workerBuildDebt < cost) return prop;
+          workerBuildDebt += cost;
+          return { ...prop, houses: prop.houses + 1 };
+        }
         // 4 houses → upgrade to hotel
+        const cost = prop.hotelCost || 0;
+        if (movingPlayerBefore.balance - workerBuildDebt < cost) return prop;
+        workerBuildDebt += cost;
         return { ...prop, hasHotel: true, houses: 0 };
       });
     });
   }
 
+  // Deduct worker build costs from the moving player
+  const playersAfterWorkerCosts = workerBuildDebt > 0
+    ? players.map(p => p.id === state.currentPlayer ? { ...p, balance: p.balance - workerBuildDebt } : p)
+    : players;
+
+  // If player lands on their OWN owned property, pause so they can optionally build
+  const ownsLanded = isBuyable && landedProperty?.isOwned && landedProperty?.owner === movingPlayer.name;
+
   let nextState: GameState = {
     ...state,
-    players,
+    players: playersAfterWorkerCosts,
     properties: propertiesAfterWorkers,
-    turnState: shouldOfferPurchase ? 'waiting_for_action' : 'completed',
+    turnState: shouldOfferPurchase || ownsLanded ? 'waiting_for_action' : 'completed',
     pendingPurchase: shouldOfferPurchase ? { propertyId: landedProperty!.id, playerId: state.currentPlayer } : null
   };
 
@@ -237,7 +255,10 @@ export const computeRent = (properties: Property[], property: Property, diceTota
   if (property.type === 'property') {
     if (property.hasHotel) return property.rent[5] || 0;
     if (property.houses > 0) return property.rent[property.houses] || 0;
-    const hasMonopoly = property.colorGroup && properties.filter(p => p.colorGroup === property.colorGroup).every(p => p.owner === property.owner);
+    const hasMonopoly = property.colorGroup
+      && properties
+          .filter(p => p.type === 'property' && p.colorGroup === property.colorGroup)
+          .every(p => p.owner === property.owner && !p.isMortgaged);
     return hasMonopoly ? property.rent[0] * 2 : property.rent[0];
   }
   return 0;

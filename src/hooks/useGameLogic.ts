@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { db } from '../lib/firebase';
 import { doc, onSnapshot, runTransaction, setDoc, getDoc } from 'firebase/firestore';
 import { rollDiceLogic, movePlayer, handlePropertyPurchase, advanceTurn as advanceTurnLogic, checkWinCondition, computeRent as computeRentLogic, computePlayerIncome } from '../gameEngine/core';
@@ -582,19 +582,16 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
     }
   }, [auctionTimer, gameState.currentAuction, endAuction]);
 
-  // Turn timer effect
+  // Turn timer effect — uses advanceTurnRef to avoid restarting the interval on every state update
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    
+
     if (gameState.turnEndTime && gameState.gamePhase === 'playing') {
       interval = setInterval(() => {
         const remaining = Math.max(0, Math.floor((gameState.turnEndTime! - Date.now()) / 1000));
         setTurnTimer(remaining);
-        
-        // Auto-advance if timer hits 0 AND I am the current player (to trigger the update once)
         if (remaining === 0 && gameState.currentPlayer === localPlayerId) {
-          console.log("Turn timer expired. Auto-advancing...");
-          advanceTurn();
+          advanceTurnRef.current();
         }
       }, 1000);
     } else {
@@ -604,18 +601,24 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [gameState.turnEndTime, gameState.gamePhase, gameState.currentPlayer, localPlayerId, advanceTurn]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState.turnEndTime, gameState.gamePhase, gameState.currentPlayer, localPlayerId]);
+
+  // Stable ref so the auto-advance timer is not reset by unrelated state updates (e.g. Firestore heartbeats)
+  const advanceTurnRef = useRef(advanceTurn);
+  useEffect(() => { advanceTurnRef.current = advanceTurn; }, [advanceTurn]);
 
   // Automatic turn advancement when status is 'completed'
   useEffect(() => {
     if (gameState.turnState === 'completed' && gameState.gamePhase === 'playing' && gameState.currentPlayer === localPlayerId) {
       const timer = setTimeout(() => {
-        console.log("Turn completed. Auto-advancing...");
-        advanceTurn();
-      }, 2000); // 2 second delay to show results before moving
+        advanceTurnRef.current();
+      }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [gameState.turnState, gameState.gamePhase, gameState.currentPlayer, localPlayerId, advanceTurn]);
+  // Deliberately omit advanceTurn — use ref to prevent Firestore updates from resetting the timer
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState.turnState, gameState.gamePhase, gameState.currentPlayer, localPlayerId]);
   
 
   const placeBid = useCallback((amount: number, bidderId?: string) => {
@@ -767,7 +770,8 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
     const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayer);
     if (!property || !currentPlayer) return;
     if (!canBuildHouse(property, currentPlayer.name)) return;
-    const cost = property.houseCost || 0;
+    // Progressive cost: each additional house on this property costs more
+    const cost = (property.houseCost || 0) * (property.houses + 1);
     if (currentPlayer.balance < cost) return;
     setGameState(prev => ({
       ...prev,
@@ -1187,9 +1191,16 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
   const rejectTradeOffer = useCallback((offerId: string) => {
     setGameState(prev => ({
       ...prev,
-      tradeOffers: prev.tradeOffers.map(o => 
+      tradeOffers: prev.tradeOffers.map(o =>
         o.id === offerId ? { ...o, status: 'rejected' as const } : o
       )
+    }));
+  }, []);
+
+  const cancelTradeOffer = useCallback((offerId: string) => {
+    setGameState(prev => ({
+      ...prev,
+      tradeOffers: prev.tradeOffers.filter(o => o.id !== offerId)
     }));
   }, []);
 
@@ -1421,6 +1432,7 @@ export const useGameLogic = (roomId?: string, localPlayerId?: string) => {
     createTradeOffer,
     acceptTradeOffer,
     rejectTradeOffer,
+    cancelTradeOffer,
     // Rent payment functions
     payRent,
     skipRent,

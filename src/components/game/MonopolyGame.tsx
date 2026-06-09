@@ -98,6 +98,7 @@ const MonopolyGame: React.FC = () => {
     createTradeOffer,
     acceptTradeOffer,
     rejectTradeOffer,
+    cancelTradeOffer,
     payRent,
     skipRent,
     payJailFine,
@@ -386,6 +387,28 @@ const MonopolyGame: React.FC = () => {
     propertyOnMyTile.isOwned &&
     propertyOnMyTile.owner !== myPlayer.name
   ) ? propertyOnMyTile : null;
+
+  // Detect landing on own property — show a build-house / end-turn window
+  const landedOnOwnProperty = (
+    isMyTurn &&
+    gameState.turnState === 'waiting_for_action' &&
+    !gameState.pendingPurchase &&
+    !gameState.pendingRent &&
+    !gameState.pendingCard &&
+    !gameState.currentAuction &&
+    !showJailDialog &&
+    propertyOnMyTile?.isOwned === true &&
+    propertyOnMyTile?.owner === myPlayer.name
+  );
+
+  // Show worker assignment nudge when it's my turn and I haven't rolled yet
+  const showWorkerNudge = (
+    isMyTurn &&
+    gameState.turnState === 'waiting_for_roll' &&
+    gameState.settings.workersEnabled &&
+    gameState.gamePhase === 'playing' &&
+    !myPlayer.isInJail
+  );
 
   // Reset offer dismissed state when local player moves to a new position
   useEffect(() => {
@@ -742,7 +765,7 @@ const MonopolyGame: React.FC = () => {
             turnTimer={turnTimer}
             turnTimerDuration={gameState.settings.turnTimerDuration}
           >
-            {(showJailDialog || myPendingCard || myPendingRentData || currentAuctionData || pendingPurchaseData || ownedPropertyOnTile) ? (
+            {(showJailDialog || myPendingCard || myPendingRentData || currentAuctionData || pendingPurchaseData || ownedPropertyOnTile || landedOnOwnProperty) ? (
               <div className="absolute inset-0 z-50 flex items-center justify-center p-1 sm:p-4 bg-slate-950/90 rounded-sm backdrop-blur-sm overflow-y-auto overflow-x-hidden pointer-events-auto">
                 <div className="w-full max-w-sm h-fit">
                   {showJailDialog ? (
@@ -818,6 +841,47 @@ const MonopolyGame: React.FC = () => {
                         currentPlayerBalance={myPlayer.balance || 0}
                       />
                     </div>
+                  ) : landedOnOwnProperty ? (
+                    <div className="bg-slate-900 rounded-xl shadow-2xl w-full border-2 border-emerald-500 p-5 space-y-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-3xl">🏠</span>
+                        <div>
+                          <h3 className="text-lg font-bold text-emerald-400">Your Property</h3>
+                          <p className="text-xs text-slate-400">{propertyOnMyTile?.name}</p>
+                        </div>
+                      </div>
+                      {propertyOnMyTile && propertyOnMyTile.type === 'property' && !propertyOnMyTile.hasHotel && (
+                        <div className="bg-emerald-950/40 rounded-lg p-3 border border-emerald-800/50 text-sm space-y-1">
+                          <p className="text-slate-300">Houses: <span className="text-white font-bold">{propertyOnMyTile.houses} / 4</span></p>
+                          <p className="text-slate-300">Next house cost: <span className="text-emerald-300 font-bold">${((propertyOnMyTile.houseCost || 0) * (propertyOnMyTile.houses + 1)).toLocaleString('en-US')}</span></p>
+                        </div>
+                      )}
+                      <div className="flex gap-3">
+                        {propertyOnMyTile && propertyOnMyTile.type === 'property' && !propertyOnMyTile.hasHotel && (
+                          propertyOnMyTile.houses < 4 ? (
+                            <button
+                              onClick={() => { buildHouse(propertyOnMyTile.id); endTurn(); }}
+                              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition-colors disabled:opacity-40"
+                            >
+                              Build House 🏠
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => { buildHotel(propertyOnMyTile.id); endTurn(); }}
+                              className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition-colors disabled:opacity-40"
+                            >
+                              Build Hotel 🏨
+                            </button>
+                          )
+                        )}
+                        <button
+                          onClick={endTurn}
+                          className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-300 font-semibold py-2 px-4 rounded-lg text-sm transition-colors"
+                        >
+                          End Turn
+                        </button>
+                      </div>
+                    </div>
                   ) : (
                     <AuctionPanel
                       currentAuction={currentAuctionData}
@@ -854,6 +918,12 @@ const MonopolyGame: React.FC = () => {
                       auctionsEnabled={gameState.settings.auctionsEnabled}
                     />
                   )}
+                </div>
+              </div>
+            ) : showWorkerNudge ? (
+              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 pointer-events-none select-none">
+                <div className="bg-amber-900/90 border border-amber-500/60 text-amber-200 text-xs font-semibold px-4 py-2 rounded-full shadow-lg animate-pulse whitespace-nowrap">
+                  👷 Assign workers before rolling — tap 👷 in the header
                 </div>
               </div>
             ) : null}
@@ -924,19 +994,27 @@ const MonopolyGame: React.FC = () => {
                     <Table>
                       <TableHeader>
                         <TableRow className="border-slate-800">
-                          <TableHead className="w-12 text-slate-300">#</TableHead>
+                          <TableHead className="w-8 text-slate-300">#</TableHead>
                           <TableHead className="text-slate-300">Player</TableHead>
                           <TableHead className="text-slate-300">Cash</TableHead>
-                          <TableHead className="text-slate-300 min-w-32">Properties</TableHead>
+                          <TableHead className="text-slate-300">Net Worth</TableHead>
+                          <TableHead className="text-slate-300 min-w-28">Properties</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {gameState.players.map((p, idx) => {
+                        {[...gameState.players]
+                          .map(p => {
+                            const propVal = gameState.properties.filter(prop => prop.owner === p.name).reduce((s, prop) => s + prop.currentValue, 0);
+                            return { ...p, netWorth: p.balance + propVal };
+                          })
+                          .sort((a, b) => (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0) || b.netWorth - a.netWorth)
+                          .map((p, idx) => {
                           const propsOwned = gameState.properties.filter(prop => prop.owner === p.name);
                           const isCurrent = gameState.currentPlayer === p.id;
+                          const fmtNW = (n: number) => n >= 1000000 ? `$${(n/1000000).toFixed(2)}M` : n >= 1000 ? `$${(n/1000).toFixed(0)}K` : `$${n}`;
                           return (
-                            <TableRow key={p.id} className={`border-slate-800 flex-1 ${isCurrent ? 'bg-slate-900/50' : ''}`}>
-                              <TableCell className="text-slate-200">{idx + 1}</TableCell>
+                            <TableRow key={p.id} className={`border-slate-800 flex-1 ${isCurrent ? 'bg-slate-900/50' : ''} ${!p.isActive ? 'opacity-40' : ''}`}>
+                              <TableCell className="text-slate-400 font-bold text-sm">{idx + 1}</TableCell>
                               <TableCell className="text-slate-100 font-medium">
                                 <div className="flex items-center gap-2">
                                   <span className="text-lg" style={{ color: p.color }} dangerouslySetInnerHTML={{__html: p.pieceIcon}} />
@@ -949,7 +1027,8 @@ const MonopolyGame: React.FC = () => {
                                   )}
                                 </div>
                               </TableCell>
-                              <TableCell className="text-emerald-400 font-mono font-bold tracking-tight">${(p.balance/1000).toFixed(0)}K</TableCell>
+                              <TableCell className="text-emerald-400 font-mono font-bold tracking-tight">{fmtNW(p.balance)}</TableCell>
+                              <TableCell className="text-cyan-300 font-mono font-bold tracking-tight">{fmtNW((p as any).netWorth)}</TableCell>
                               <TableCell className="text-slate-200">
                                 {propsOwned.length === 0 ? (
                                   <span className="text-slate-600 italic text-xs">None</span>
@@ -985,11 +1064,13 @@ const MonopolyGame: React.FC = () => {
                     currentPlayer={myPlayer}
                     allPlayers={gameState.players}
                     ownedProperties={myOwnedProperties}
+                    allProperties={gameState.properties}
                     tradeOffers={gameState.tradeOffers}
                     onCreateTradeOffer={createTradeOffer}
                     onAcceptTradeOffer={acceptTradeOffer}
                     onRejectTradeOffer={rejectTradeOffer}
-                    onPlaceTradeBid={() => {}} 
+                    onCancelTradeOffer={cancelTradeOffer}
+                    onPlaceTradeBid={() => {}}
                   />
                 </DialogContent>
               </Dialog>
@@ -1100,7 +1181,9 @@ const MonopolyGame: React.FC = () => {
                           {!worker ? (
                             <button
                               onClick={() => assignWorker(prop.id, workerPickColor)}
-                              className="text-xs bg-amber-700 hover:bg-amber-600 text-white px-2 py-1 rounded transition-colors"
+                              disabled={!isMyTurn || gameState.turnState !== 'waiting_for_roll'}
+                              title={(!isMyTurn || gameState.turnState !== 'waiting_for_roll') ? 'Can only assign before rolling on your turn' : ''}
+                              className="text-xs bg-amber-700 hover:bg-amber-600 text-white px-2 py-1 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                               Assign
                             </button>

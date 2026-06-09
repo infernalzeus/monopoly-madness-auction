@@ -43,10 +43,9 @@ const RentPaymentDialog: React.FC<RentPaymentDialogProps> = ({
   const colorGroupClass = property.colorGroup ? colorGroups[property.colorGroup] || 'bg-gray-400' : 'bg-gray-400';
 
   const formatCurrency = (amount: number) => {
-    if (amount >= 100000) {
-      return `$${(amount / 100000).toFixed(1)}L`;
-    }
-    return `$${(amount / 1000).toFixed(0)}K`;
+    if (amount >= 1000000) return `$${(amount / 1000000).toFixed(2)}M`;
+    if (amount >= 1000) return `$${(amount / 1000).toFixed(0)}K`;
+    return `$${amount}`;
   };
 
   return (

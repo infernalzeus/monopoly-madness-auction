@@ -42,10 +42,9 @@ const GameOverview: React.FC<GameOverviewProps> = ({
   }).sort((a, b) => b.netWorth - a.netWorth);
 
   const formatCurrency = (amount: number) => {
-    if (amount >= 100000) {
-      return `$${(amount / 100000).toFixed(1)}L`;
-    }
-    return `$${(amount / 1000).toFixed(0)}K`;
+    if (amount >= 1000000) return `$${(amount / 1000000).toFixed(2)}M`;
+    if (amount >= 1000) return `$${(amount / 1000).toFixed(0)}K`;
+    return `$${amount}`;
   };
 
   const formatTime = (timestamp: number) => {
